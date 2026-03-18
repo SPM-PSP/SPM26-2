@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能算法题库 - 提交记录</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <div class="logo">AI</div>
+                <span>智能算法题库</span>
+            </div>
+            <div class="navbar-menu">
+                <a href="index.html">首页</a>
+                <a href="problems.html">题库</a>
+                <a href="submissions.html" class="active">提交记录</a>
+                <a href="ai-report.html">AI分析</a>
+            </div>
+            <div class="navbar-user">
+                <div class="user-avatar">U</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="main-container">
+        <!-- 统计卡片 -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px;">
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--success-color);">156</div>
+                <div class="stat-label">通过 (AC)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--error-color);">48</div>
+                <div class="stat-label">答案错误 (WA)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #D48806;">18</div>
+                <div class="stat-label">编译错误 (CE)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #722ED1;">12</div>
+                <div class="stat-label">运行错误 (RE)</div>
+            </div>
+        </div>
+
+        <!-- 筛选栏 -->
+        <div class="card">
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <span class="filter-label">状态筛选：</span>
+                    <select class="filter-select">
+                        <option value="">全部状态</option>
+                        <option value="ac">通过 (AC)</option>
+                        <option value="wa">答案错误 (WA)</option>
+                        <option value="ce">编译错误 (CE)</option>
+                        <option value="re">运行错误 (RE)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">时间范围：</span>
+                    <select class="filter-select">
+                        <option value="">全部时间</option>
+                        <option value="today">今天</option>
+                        <option value="week">最近一周</option>
+                        <option value="month">最近一月</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="margin-left: auto;">
+                    <input type="text" class="search-input" placeholder="搜索题目名称...">
+                </div>
+            </div>
+        </div>
+
+        <!-- 提交记录列表 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">提交记录</div>
+                <span style="color: var(--text-muted); font-size: 14px;">共 234 条记录</span>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">提交ID</th>
+                        <th>题目</th>
+                        <th style="width: 120px;">状态</th>
+                        <th style="width: 100px;">运行时间</th>
+                        <th style="width: 100px;">内存消耗</th>
+                        <th style="width: 80px;">语言</th>
+                        <th style="width: 150px;">提交时间</th>
+                        <th style="width: 80px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23401</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">两数之和</a></td>
+                        <td><span class="status status-ac">通过</span></td>
+                        <td>12ms</td>
+                        <td>8.5MB</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-18 14:23:01</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23398</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">最长回文子串</a></td>
+                        <td><span class="status status-wa">答案错误</span></td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-18 14:08:45</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23395</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">接雨水</a></td>
+                        <td><span class="status status-ce">编译错误</span></td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-18 13:55:22</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23390</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">二叉树的中序遍历</a></td>
+                        <td><span class="status status-ac">通过</span></td>
+                        <td>8ms</td>
+                        <td>7.2MB</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-18 12:31:10</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23385</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">合并两个有序链表</a></td>
+                        <td><span class="status status-ac">通过</span></td>
+                        <td>16ms</td>
+                        <td>9.1MB</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-18 10:15:37</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23378</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">最长递增子序列</a></td>
+                        <td><span class="status status-re">运行错误</span></td>
+                        <td>--</td>
+                        <td>--</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-17 22:08:14</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                    <tr>
+                        <td style="color: var(--text-muted); font-family: monospace;">#23372</td>
+                        <td><a href="problem-detail.html" style="color: var(--primary-color);">背包问题</a></td>
+                        <td><span class="status status-ac">通过</span></td>
+                        <td>24ms</td>
+                        <td>10.4MB</td>
+                        <td><span class="tag tag-entry">C++</span></td>
+                        <td style="color: var(--text-muted); font-size: 13px;">2026-03-17 20:42:56</td>
+                        <td><a href="ai-report.html" class="btn btn-sm btn-outline">AI分析</a></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- 分页 -->
+            <div class="pagination">
+                <div class="pagination-item">&lt;</div>
+                <div class="pagination-item active">1</div>
+                <div class="pagination-item">2</div>
+                <div class="pagination-item">3</div>
+                <div class="pagination-item">...</div>
+                <div class="pagination-item">24</div>
+                <div class="pagination-item">&gt;</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
