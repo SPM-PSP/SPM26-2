@@ -2,28 +2,39 @@ package com.itheim.program_platform_backend.utils;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+
+import javax.annotation.PostConstruct;
 import javax.crypto.SecretKey;
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Map;
 
 /**
  * JWT 工具类：生成、解析、验证 Token
  */
+@Slf4j
+@Component
 public class JwtUtil {
 
-    // 🔑 固定的 Base64 编码密钥（必须是 32 字节以上的原始数据）
-    // 可通过命令生成：openssl rand -base64 32
-    private static final String SECRET_KEY_BASE64 = "dGFuZ2RhaXhpbuaIkeecn+acjeS6hui/meS4quS7gOS5iOWvhumSpeS6hg=="; // 示例：44字符，32字节
+    @Value("${jwt.secret}")
+    private String secretKey;
 
-    // ⏱ Token 过期时间：24小时
-    private static final long EXPIRATION = 1000 * 60 * 60 * 24;
+    @Value("${jwt.expiration}")
+    private long expiration;
 
-    // 🔐 解码后的密钥对象（静态初始化，确保唯一）
-    private static final SecretKey KEY = Keys.hmacShaKeyFor(
-            Base64.getDecoder().decode(SECRET_KEY_BASE64)
-    );
+    private static SecretKey KEY;
+    private static long EXPIRATION;
+
+    @PostConstruct
+    public void init() {
+        KEY = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+        EXPIRATION = expiration;
+        log.info("JWT 工具类初始化完成，过期时间: {} 毫秒", EXPIRATION);
+    }
 
     /**
      * 生成 JWT Token
@@ -31,7 +42,7 @@ public class JwtUtil {
      * @param claims 自定义载荷（如用户ID、角色等）
      * @return JWT 字符串
      */
-    public static String generateToken(Map<String, Object> claims) {
+    public String generateToken(Map<String, Object> claims) {
         return Jwts.builder()
                 .addClaims(claims)
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
@@ -46,7 +57,7 @@ public class JwtUtil {
      * @return Claims 载荷
      * @throws JwtException 解析失败时抛出
      */
-    public static Claims parseToken(String token) throws JwtException {
+    public Claims parseToken(String token) throws JwtException {
         try {
             return Jwts.parserBuilder()
                     .setSigningKey(KEY)
@@ -70,7 +81,7 @@ public class JwtUtil {
      * @param token JWT 字符串
      * @return true: 已过期或无效，false: 未过期
      */
-    public static boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         try {
             parseToken(token);
             return false;

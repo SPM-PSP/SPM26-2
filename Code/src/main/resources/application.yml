@@ -1,0 +1,61 @@
+server:
+  port: 8080
+
+
+spring:
+  application:
+    name: program_platform_backend
+  
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/oj_platform?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+  
+  # Jackson 配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+  
+  # Spring MVC 配置
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+# MyBatis 配置
+mybatis:
+  # 实体类别名包路径
+  type-aliases-package: com.itheim.program_platform_backend.domain.po
+  # Mapper XML 文件路径
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    # 开启驼峰命名映射
+    map-underscore-to-camel-case: true
+    # 开启日志打印SQL（开发环境）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# JWT 配置
+jwt:
+  # 密钥（至少32位）
+  secret: mySecretKeyForJwtTokenGeneration2024!
+  # 过期时间（单位：毫秒）默认7天
+  expiration: 604800000
+  # Token 请求头名称
+  header: token
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.itheim.program_platform_backend: DEBUG
+    com.itheim.program_platform_backend.mapper: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+
+# Knife4j 配置
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
