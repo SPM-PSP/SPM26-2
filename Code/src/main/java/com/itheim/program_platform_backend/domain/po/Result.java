@@ -17,7 +17,6 @@ public class Result<T> implements Serializable {
     private int code;
     private String message;
     private T data;
-    private String requestId; // 可选：用于链路追踪
 
     /**
      * 成功响应（带数据）
@@ -31,6 +30,24 @@ public class Result<T> implements Serializable {
      */
     public static Result<Void> success() {
         return of(CommonResultCode.SUCCESS, null);
+    }
+
+    public static Result<Void> success(String message) {
+        Result<Void> result = new Result<>();
+        result.setCode(CommonResultCode.SUCCESS.getCode());
+        result.setMessage(message);
+        return result;
+    }
+
+    /**
+     * 成功响应（自定义消息，带数据）
+     */
+    public static <T> Result<T> success(String message, T data) {
+        Result<T> result = new Result<>();
+        result.setCode(CommonResultCode.SUCCESS.getCode());
+        result.setMessage(message);
+        result.setData(data);
+        return result;
     }
 
     /**
