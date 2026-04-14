@@ -1,5 +1,6 @@
 package com.itheim.program_platform_backend.interceptor;
 
+import com.itheim.program_platform_backend.mapper.AuthMapper;
 import com.itheim.program_platform_backend.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
 
@@ -19,6 +20,8 @@ public class TokenInterceptor implements HandlerInterceptor {
     
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private AuthMapper authMapper;
     
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -49,6 +52,15 @@ public class TokenInterceptor implements HandlerInterceptor {
         // 4.解析令牌，如果解析失败，返回错误结果。
         try {
             Claims claims = jwtUtil.parseToken(jwt);
+            // 5. 检查 Token 是否在数据库中存在（验证是否为最新有效 Token）
+            int count = authMapper.countByToken(jwt);
+            if (count == 0) {
+                log.warn("Token无效或已过期，用户ID: {}", claims.get("userId"));
+                response.setStatus(401);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":401,\"message\":\"Token已失效，请重新登录\",\"data\":null}");
+                return false;
+            }
             // 可以将用户信息存入request，供后续使用
             request.setAttribute("userId", claims.get("userId"));
             request.setAttribute("role", claims.get("role"));

@@ -92,6 +92,9 @@ public class JwtUtil {
         }
     }
 
+    public long getExpiration() {
+        return EXPIRATION;
+    }
     // 自定义异常类
     public static class JwtException extends Exception {
         public JwtException(String message, Throwable cause) {
