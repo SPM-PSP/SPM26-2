@@ -59,3 +59,18 @@ knife4j:
   enable: true
   setting:
     language: zh-CN
+
+judge:
+  # 必须修改为你本地存放 judge.sh 的目录
+  script-path: D:/judge-docker/
+  # 临时任务根目录（自动创建）
+  temp-task-root: D:/judge-docker/tasks/
+  # Docker镜像名称（和你本地构建的一致）
+  docker-image: judge-cpp:latest
+  # 默认评测限制
+  default-time-limit: 5
+  default-memory-limit: 256m
+  # 命令执行超时（比评测时间多10秒缓冲）
+  command-timeout: 15
+  # 调试时设为true，保留临时文件
+  keep-temp-files: false
