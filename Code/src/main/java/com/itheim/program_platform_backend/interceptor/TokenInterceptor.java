@@ -2,6 +2,7 @@ package com.itheim.program_platform_backend.interceptor;
 
 import com.itheim.program_platform_backend.mapper.AuthMapper;
 import com.itheim.program_platform_backend.utils.JwtUtil;
+import com.itheim.program_platform_backend.utils.UserContext;
 import io.jsonwebtoken.Claims;
 
 
@@ -61,9 +62,9 @@ public class TokenInterceptor implements HandlerInterceptor {
                 response.getWriter().write("{\"code\":401,\"message\":\"Token已失效，请重新登录\",\"data\":null}");
                 return false;
             }
-            // 可以将用户信息存入request，供后续使用
-            request.setAttribute("userId", claims.get("userId"));
-            request.setAttribute("role", claims.get("role"));
+            // 6. 将用户ID存入 ThreadLocal
+            Long userId = ((Number) claims.get("userId")).longValue();
+            UserContext.setCurrentUserId(userId);
             log.info("Token验证成功，用户ID: {}", claims.get("userId"));
         } catch (JwtUtil.JwtException e) {
             log.warn("令牌解析失败: {}", e.getMessage());
