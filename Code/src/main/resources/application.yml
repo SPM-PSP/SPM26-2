@@ -74,3 +74,9 @@ judge:
   command-timeout: 15
   # 调试时设为true，保留临时文件
   keep-temp-files: false
+
+doubao:
+    api:
+      url: https://ark.cn-beijing.volces.com/api/v3/chat/completions # 示例地址，请以官方文档为准
+      key: your-api-key-here # 替换为你的API Key
+      model: ep-20240604xxxxxx # 替换为你创建的模型接入点ID (Endpoint ID)
