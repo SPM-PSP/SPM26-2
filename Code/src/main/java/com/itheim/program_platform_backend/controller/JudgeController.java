@@ -6,6 +6,7 @@ import com.itheim.program_platform_backend.service.JudgeService;
 import javax.validation.Valid;
 
 import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,7 @@ public class JudgeController {
     /**
      * C++代码评测接口
      */
+    @ApiOperation("判题接口")
     @PostMapping("/cpp")
     public ResponseEntity<JudgeResponse> judge(@Valid @RequestBody JudgeRequest request) {
         return ResponseEntity.ok(judgeService.judge(request));
@@ -32,6 +34,7 @@ public class JudgeController {
     /**
      * Docker健康检查接口
      */
+    @ApiOperation("docker启动确认")
     @PostMapping("/check-docker")
     public ResponseEntity<Boolean> checkDocker() {
         return ResponseEntity.ok(judgeService.checkDockerStatus());
