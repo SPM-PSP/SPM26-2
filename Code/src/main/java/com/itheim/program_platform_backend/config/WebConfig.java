@@ -18,7 +18,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(tokenInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/api/judge/cpp" , "/api/v1/auth/login", "/api/v1/auth/register","/api/v1/auth/logout",
+                .excludePathPatterns("/api/algorithm/**" ,"/api/judge/cpp", "/api/v1/auth/login", "/api/v1/auth/register","/api/v1/auth/logout",
                         "/error", "/doc.html", "/webjars/**", "/swagger-resources/**",
                         "/v2/api-docs", "/favicon.ico", "/.well-known/**");
     }
