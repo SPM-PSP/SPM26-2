@@ -1,6 +1,9 @@
 server:
   port: 8080
-
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
 
 spring:
   application:
@@ -66,9 +69,9 @@ volc:
     # 你的 API Key，建议通过环境变量 ARK_API_KEY 注入
     api-key: ${ARK_API_KEY:ark-e52208a6-6d3b-4967-80dd-7e0de4ba5852-68281}
     # 模型接入点 (Model ID)，替换为你在控制台创建的 Endpoint ID
-    model-id: doubao-seed-2-0-pro-260215
-#    base-url: https://ark.cn-beijing.volces.com/api/v3
-
+    model: doubao-seed-2-0-pro-260215
+    base-url: https://ark.cn-beijing.volces.com/api/v3
+    timeout: 30000
 
 # 判题oj 配置
 judge:
