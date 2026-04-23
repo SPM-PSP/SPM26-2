@@ -1,4 +1,4 @@
-package com.itheim.program_platform_backend.service;
+package com.itheim.program_platform_backend.service.serviceImpl;
 
 import com.itheim.program_platform_backend.config.JudgeConfig;
 import com.itheim.program_platform_backend.domain.dto.JudgeRequest;
