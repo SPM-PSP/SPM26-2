@@ -1,6 +1,9 @@
 server:
   port: 8080
-
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
 
 spring:
   application:
@@ -11,7 +14,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/oj_platform?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: 123456
+    password: root
   
   # Jackson 配置
   jackson:
@@ -66,9 +69,9 @@ volc:
     # 你的 API Key，建议通过环境变量 ARK_API_KEY 注入
     api-key: ${ARK_API_KEY:ark-e52208a6-6d3b-4967-80dd-7e0de4ba5852-68281}
     # 模型接入点 (Model ID)，替换为你在控制台创建的 Endpoint ID
-    model-id: doubao-seed-2-0-pro-260215
-#    base-url: https://ark.cn-beijing.volces.com/api/v3
-
+    model: doubao-seed-2-0-pro-260215
+    base-url: https://ark.cn-beijing.volces.com/api/v3
+    timeout: 80000
 
 # 判题oj 配置
 judge:
@@ -85,9 +88,3 @@ judge:
   command-timeout: 15
   # 调试时设为true，保留临时文件
   keep-temp-files: false
-
-doubao:
-    api:
-      url: https://ark.cn-beijing.volces.com/api/v3/chat/completions # 示例地址，请以官方文档为准
-      key: your-api-key-here # 替换为你的API Key
-      model: ep-20240604xxxxxx # 替换为你创建的模型接入点ID (Endpoint ID)
