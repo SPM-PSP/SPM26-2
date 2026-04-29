@@ -10,18 +10,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlgorithmServiceImpl implements AlgorithmService {
     private final VolcLlmUtil volcLlmUtil;
 
-    /**
-     * 代码分析核心逻辑：构造精准提示词调用大模型
-     */
     @Override
     public CodeAnalysisResponse analyzeCode(CodeAnalysisRequest request) {
-        // 构造代码分析提示词（精准指令确保返回格式可控）
         String prompt = String.format("""
                 请完成以下对%s代码的分析任务，要求输出结构化结果：
                 1. 算法板块分类：仅输出分类名称（如数组、链表、动态规划、贪心、回溯、图论等）；
@@ -35,70 +34,87 @@ public class AlgorithmServiceImpl implements AlgorithmService {
                 【代码风格】：xxx
                 """, request.getLanguage(), request.getCode());
 
-        // 调用大模型
         String llmResponse = volcLlmUtil.callLlm(prompt);
         log.info("代码分析响应：{}", llmResponse);
 
-        // 解析响应结果
         CodeAnalysisResponse response = new CodeAnalysisResponse();
-        String[] lines = llmResponse.split("\n");
-        for (String line : lines) {
-            if (line.startsWith("【算法板块】：")) {
-                response.setPlateCategory(line.replace("【算法板块】：", "").trim());
-            } else if (line.startsWith("【复杂度分析】：")) {
-                response.setComplexityAnalysis(line.replace("【复杂度分析】：", "").trim());
-            } else if (line.startsWith("【代码风格】：")) {
-                response.setCodeStyleAnalysis(line.replace("【代码风格】：", "").trim());
-            }
-        }
+
+        response.setPlateCategory(extractField(llmResponse, "【算法板块】："));
+        response.setComplexityAnalysis(extractField(llmResponse, "【复杂度分析】："));
+        response.setCodeStyleAnalysis(extractField(llmResponse, "【代码风格】："));
+
         return response;
     }
 
-    /**
-     * 题目生成核心逻辑：构造提示词生成标准化算法题
-     */
     @Override
     public ProblemGenerateResponse generateProblem(ProblemGenerateRequest request) {
-        // 构造题目生成提示词
         String prompt = String.format("""
                 请生成一道%s难度的%s算法题（目标语言：%s），要求输出结构化结果：
                 1. 题目名称：简洁明了，符合算法题命名规范；
                 2. 题目描述：详细说明题目要求、输入约束、数据范围；
-                3. 样例输入：给出1-2个典型输入案例；
+                3. 样例输入：给出2个典型输入案例,要求第1个输入输出样例数量级在5以内，第二个在10-60之间（根据题目复杂度）；
                 4. 样例输出：对应样例输入的输出结果；
                 5. 输入格式：说明输入的格式规范；
                 6. 输出格式：说明输出的格式规范；
                 输出格式要求：
                 【题目名称】：xxx
                 【题目描述】：xxx
-                【样例输入】：xxx
-                【样例输出】：xxx
+                【样例输入1】：xxx
+                【样例输出1】：xxx
+                【样例输入2】：xxx
+                【样例输出2】：xxx
                 【输入格式】：xxx
                 【输出格式】：xxx
                 """, request.getDifficulty(), request.getPlate(), request.getTargetLanguage());
 
-        // 调用大模型
         String llmResponse = volcLlmUtil.callLlm(prompt);
         log.info("题目生成响应：{}", llmResponse);
 
-        // 解析响应结果
         ProblemGenerateResponse response = new ProblemGenerateResponse();
-        String[] lines = llmResponse.split("\n");
-        for (String line : lines) {
-            if (line.startsWith("【题目名称】：")) {
-                response.setProblemName(line.replace("【题目名称】：", "").trim());
-            } else if (line.startsWith("【题目描述】：")) {
-                response.setProblemDesc(line.replace("【题目描述】：", "").trim());
-            } else if (line.startsWith("【样例输入】：")) {
-                response.setSampleInput(line.replace("【样例输入】：", "").trim());
-            } else if (line.startsWith("【样例输出】：")) {
-                response.setSampleOutput(line.replace("【样例输出】：", "").trim());
-            } else if (line.startsWith("【输入格式】：")) {
-                response.setInputFormat(line.replace("【输入格式】：", "").trim());
-            } else if (line.startsWith("【输出格式】：")) {
-                response.setOutputFormat(line.replace("【输出格式】：", "").trim());
+
+        response.setProblemName(extractField(llmResponse, "【题目名称】："));
+        response.setProblemDesc(extractField(llmResponse, "【题目描述】："));
+
+        List<String> sampleInputs = new ArrayList<>();
+        sampleInputs.add(extractField(llmResponse, "【样例输入1】："));
+        sampleInputs.add(extractField(llmResponse, "【样例输入2】："));
+        response.setSampleInput(sampleInputs);
+
+        List<String> sampleOutputs = new ArrayList<>();
+        sampleOutputs.add(extractField(llmResponse, "【样例输出1】："));
+        sampleOutputs.add(extractField(llmResponse, "【样例输出2】："));
+        response.setSampleOutput(sampleOutputs);
+
+        response.setInputFormat(extractField(llmResponse, "【输入格式】："));
+        response.setOutputFormat(extractField(llmResponse, "【输出格式】："));
+
+        return response;
+    }
+
+    private String extractField(String content, String fieldName) {
+        int startIndex = content.indexOf(fieldName);
+        if (startIndex == -1) {
+            return "";
+        }
+
+        startIndex += fieldName.length();
+
+        String[] possibleNextFields = {"【算法板块】：", "【复杂度分析】：", "【代码风格】：",
+                "【题目名称】：", "【题目描述】：",
+                "【样例输入1】：", "【样例输出1】：",
+                "【样例输入2】：", "【样例输出2】：",
+                "【输入格式】：", "【输出格式】："};
+
+        int endIndex = content.length();
+        for (String nextField : possibleNextFields) {
+            if (!nextField.equals(fieldName)) {
+                int nextIndex = content.indexOf(nextField, startIndex);
+                if (nextIndex != -1 && nextIndex < endIndex) {
+                    endIndex = nextIndex;
+                }
             }
         }
-        return response;
+
+        return content.substring(startIndex, endIndex).trim();
     }
 }
