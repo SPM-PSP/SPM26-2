@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheim.program_platform_backend.mapper.AdminMapper">
+
+    <select id="selectUserRoleById" resultType="java.lang.Integer">
+        SELECT role
+        FROM user
+        WHERE id = #{userId}
+    </select>
+
+    <select id="selectUserByUsername" resultType="com.itheim.program_platform_backend.domain.po.User">
+        SELECT id, username, password, email, nickname, avatar, role, phone, create_time, update_time
+        FROM user
+        WHERE username = #{username}
+    </select>
+
+    <select id="selectUserByEmail" resultType="com.itheim.program_platform_backend.domain.po.User">
+        SELECT id, username, password, email, nickname, avatar, role, phone, create_time, update_time
+        FROM user
+        WHERE email = #{email}
+    </select>
+
+    <select id="countAdminUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM user
+        <where>
+            role = 1
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%')
+                OR nickname LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+                OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAdminUsers" resultType="com.itheim.program_platform_backend.domain.po.User">
+        SELECT id, username, email, nickname, avatar, phone, create_time
+        FROM user
+        <where>
+            role = 1
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%')
+                OR nickname LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%')
+                OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time ${sortOrder}
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <delete id="deleteUserTokenByUserId">
+        DELETE FROM user_token
+        WHERE user_id = #{userId}
+    </delete>
+
+    <delete id="deleteAdminUserById">
+        DELETE FROM user
+        WHERE id = #{userId} AND role = 1
+    </delete>
+
+    <insert id="insertUser" parameterType="com.itheim.program_platform_backend.domain.po.User">
+        INSERT INTO user(username, password, email, nickname, avatar, role, phone, create_time, update_time)
+        VALUES(#{username}, #{password}, #{email}, #{nickname}, #{avatar}, #{role}, #{phone}, #{createTime}, #{updateTime})
+    </insert>
+
+    <select id="selectCategoryByName" resultType="com.itheim.program_platform_backend.domain.po.Category">
+        SELECT id, name, create_time, update_time
+        FROM category
+        WHERE name = #{name}
+    </select>
+
+    <select id="countCategoryUsage" resultType="long">
+        SELECT COUNT(*)
+        FROM problem_category
+        WHERE category_id = #{categoryId}
+    </select>
+
+    <insert id="insertCategory">
+        INSERT INTO category(name, create_time, update_time)
+        VALUES(#{name}, #{createTime}, #{updateTime})
+    </insert>
+
+    <delete id="deleteCategoryById">
+        DELETE FROM category
+        WHERE id = #{categoryId}
+    </delete>
+
+    <select id="selectCategoriesByNames" resultType="com.itheim.program_platform_backend.domain.po.Category">
+        SELECT id, name, create_time, update_time
+        FROM category
+        WHERE name IN
+        <foreach collection="names" item="name" open="(" separator="," close=")">
+            #{name}
+        </foreach>
+    </select>
+
+    <select id="countProblemList" resultType="long">
+        SELECT COUNT(*)
+        FROM problem p
+        <where>
+            <if test="difficulty != null and difficulty != ''">
+                AND p.difficulty = #{difficulty}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="categoryNames != null and categoryNames.size > 0">
+                AND EXISTS (
+                    SELECT 1 FROM problem_category pc2
+                    JOIN category c2 ON pc2.category_id = c2.id
+                    WHERE pc2.problem_id = p.id
+                    AND c2.name IN
+                    <foreach collection="categoryNames" item="name" open="(" separator="," close=")">
+                        #{name}
+                    </foreach>
+                )
+            </if>
+        </where>
+    </select>
+
+    <select id="selectProblemList" resultType="com.itheim.program_platform_backend.domain.po.Problem">
+        SELECT p.id, p.title, p.difficulty, p.pass_rate
+        FROM problem p
+        <where>
+            <if test="difficulty != null and difficulty != ''">
+                AND p.difficulty = #{difficulty}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="categoryNames != null and categoryNames.size > 0">
+                AND EXISTS (
+                    SELECT 1 FROM problem_category pc2
+                    JOIN category c2 ON pc2.category_id = c2.id
+                    WHERE pc2.problem_id = p.id
+                    AND c2.name IN
+                    <foreach collection="categoryNames" item="name" open="(" separator="," close=")">
+                        #{name}
+                    </foreach>
+                )
+            </if>
+        </where>
+        ORDER BY p.id
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="selectProblemById" resultType="com.itheim.program_platform_backend.domain.po.Problem">
+        SELECT id, title, difficulty, description, input_format, output_format,
+               sample_input, sample_output, time_limit, memory_limit, pass_rate, create_time, update_time
+        FROM problem
+        WHERE id = #{problemId}
+    </select>
+
+    <select id="selectCategoryNamesByProblemId" resultType="java.lang.String">
+        SELECT c.name
+        FROM category c
+        JOIN problem_category pc ON c.id = pc.category_id
+        WHERE pc.problem_id = #{problemId}
+        ORDER BY c.id
+    </select>
+
+    <select id="selectProblemTestCasesByProblemId" resultType="com.itheim.program_platform_backend.domain.po.ProblemTestCase">
+        SELECT id, problem_id, input_url, output_url, create_time, update_time
+        FROM problem_test_case
+        WHERE problem_id = #{problemId}
+        ORDER BY id
+    </select>
+
+    <select id="selectProblemTestCaseById" resultType="com.itheim.program_platform_backend.domain.po.ProblemTestCase">
+        SELECT id, problem_id, input_url, output_url, create_time, update_time
+        FROM problem_test_case
+        WHERE id = #{caseId}
+    </select>
+
+    <insert id="insertProblem" parameterType="com.itheim.program_platform_backend.domain.po.Problem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO problem(title, difficulty, description, input_format, output_format, sample_input, sample_output,
+                            time_limit, memory_limit, pass_rate, create_time, update_time)
+        VALUES(#{title}, #{difficulty}, #{description}, #{inputFormat}, #{outputFormat}, #{sampleInput}, #{sampleOutput},
+               #{timeLimit}, #{memoryLimit}, #{passRate}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateProblem" parameterType="com.itheim.program_platform_backend.domain.po.Problem">
+        UPDATE problem
+        SET title = #{title},
+            difficulty = #{difficulty},
+            description = #{description},
+            input_format = #{inputFormat},
+            output_format = #{outputFormat},
+            sample_input = #{sampleInput},
+            sample_output = #{sampleOutput},
+            time_limit = #{timeLimit},
+            memory_limit = #{memoryLimit},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteProblemById">
+        DELETE FROM problem
+        WHERE id = #{problemId}
+    </delete>
+
+    <delete id="deleteProblemCategoriesByProblemId">
+        DELETE FROM problem_category
+        WHERE problem_id = #{problemId}
+    </delete>
+
+    <insert id="insertProblemCategory">
+        INSERT INTO problem_category(problem_id, category_id, create_time)
+        VALUES(#{problemId}, #{categoryId}, #{createTime})
+    </insert>
+
+    <delete id="deleteProblemTestCasesByProblemId">
+        DELETE FROM problem_test_case
+        WHERE problem_id = #{problemId}
+    </delete>
+
+    <delete id="deleteSolutionsByProblemId">
+        DELETE FROM solution
+        WHERE problem_id = #{problemId}
+    </delete>
+
+    <delete id="deleteUserProblemsByProblemId">
+        DELETE FROM user_problem
+        WHERE problem_id = #{problemId}
+    </delete>
+
+    <delete id="deleteEvaluationsByProblemId">
+        DELETE FROM evaluation
+        WHERE submission_id IN (SELECT id FROM submission WHERE problem_id = #{problemId})
+    </delete>
+
+    <delete id="deleteSubmissionsByProblemId">
+        DELETE FROM submission
+        WHERE problem_id = #{problemId}
+    </delete>
+
+    <insert id="insertProblemTestCase" parameterType="com.itheim.program_platform_backend.domain.po.ProblemTestCase" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO problem_test_case(problem_id, input_url, output_url, create_time, update_time)
+        VALUES(#{problemId}, #{inputUrl}, #{outputUrl}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateProblemTestCase">
+        UPDATE problem_test_case
+        SET input_url = #{inputUrl},
+            output_url = #{outputUrl},
+            update_time = #{updateTime}
+        WHERE id = #{caseId}
+    </update>
+
+    <delete id="deleteProblemTestCaseById">
+        DELETE FROM problem_test_case
+        WHERE id = #{caseId}
+    </delete>
+
+    <select id="selectSolutionById" resultType="com.itheim.program_platform_backend.domain.po.Solution">
+        SELECT id, problem_id, title, content, language, code, create_user_id, create_time, update_time
+        FROM solution
+        WHERE id = #{solutionId}
+    </select>
+
+    <insert id="insertSolution" parameterType="com.itheim.program_platform_backend.domain.po.Solution" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO solution(problem_id, title, content, language, code, create_user_id, create_time, update_time)
+        VALUES(#{problemId}, #{title}, #{content}, #{language}, #{code}, #{createUserId}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="updateSolution" parameterType="com.itheim.program_platform_backend.domain.po.Solution">
+        UPDATE solution
+        SET title = #{title},
+            content = #{content},
+            language = #{language},
+            code = #{code},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteSolutionById">
+        DELETE FROM solution
+        WHERE id = #{solutionId}
+    </delete>
+
+</mapper>
+
+

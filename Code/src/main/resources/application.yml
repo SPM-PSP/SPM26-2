@@ -88,3 +88,8 @@ judge:
   command-timeout: 15
   # 调试时设为true，保留临时文件
   keep-temp-files: false
+
+# 文件存储配置
+file-storage:
+  test-case-root: src/main/resources/testcases/
+
