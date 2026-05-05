@@ -11,13 +11,10 @@ import java.io.Serializable;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class LoginVO implements Serializable {
+public class AvatarUploadVO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long userId;
-    private String role;
-    private String nickname;
-    private String avatar;
-    private String token;
-    private String expireTime;
+    private String avatarUrl;
+    private Long avatarSize;
+    private String avatarType;
 }

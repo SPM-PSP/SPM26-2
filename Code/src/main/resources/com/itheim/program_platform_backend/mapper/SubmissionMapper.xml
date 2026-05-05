@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+        <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.itheim.program_platform_backend.mapper.SubmissionMapper">
+
+    <select id="selectSubmissionList" resultType="com.itheim.program_platform_backend.domain.vo.SubmissionListItemVO">
+        SELECT
+        s.id AS submissionId,
+        s.problem_id AS problemId,
+        s.problem_title AS problemTitle,
+        c.name AS problemCategory,
+        s.status,
+        s.submit_time AS submitTime
+        FROM submission s
+        LEFT JOIN problem p ON s.problem_id = p.id
+        LEFT JOIN problem_category pc ON p.id = pc.problem_id
+        LEFT JOIN category c ON pc.category_id = c.id
+        WHERE s.user_id = #{userId}
+        <if test="query.result != null">
+            AND s.status = #{query.result}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND s.problem_title LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+        <if test="query.problemCategory != null and query.problemCategory.size() > 0">
+            AND c.name IN
+            <foreach collection="query.problemCategory" item="category" open="(" separator="," close=")">
+                #{category}
+            </foreach>
+        </if>
+        ORDER BY s.submit_time
+        <if test="query.sortOrder == 'desc'">
+            DESC
+        </if>
+        <if test="query.sortOrder == 'asc'">
+            ASC
+        </if>
+    </select>
+
+    <select id="selectSubmissionDetail" resultType="com.itheim.program_platform_backend.domain.vo.SubmissionDetailVO">
+        SELECT
+            s.id AS submissionId,
+            s.problem_id AS problemId,
+            s.problem_title AS problemTitle,
+            s.language,
+            s.code,
+            s.status AS result,
+            s.pass_count AS passCount,
+            s.total_count AS totalCount,
+            s.run_time AS runTime,
+            s.memory,
+            s.error_msg AS errorMsg,
+            s.submit_time AS submitTime
+        FROM submission s
+        WHERE s.id = #{submissionId}
+          AND s.user_id = #{userId}
+    </select>
+
+</mapper>

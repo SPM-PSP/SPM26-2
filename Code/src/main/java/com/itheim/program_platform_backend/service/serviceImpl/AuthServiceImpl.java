@@ -1,19 +1,25 @@
 package com.itheim.program_platform_backend.service.serviceImpl;
 
+import com.itheim.program_platform_backend.domain.dto.ChangePasswordDTO;
 import com.itheim.program_platform_backend.domain.dto.RegisterUserDTO;
+import com.itheim.program_platform_backend.domain.dto.UpdateUserDTO;
 import com.itheim.program_platform_backend.domain.po.User;
 import com.itheim.program_platform_backend.domain.po.UserToken;
+import com.itheim.program_platform_backend.domain.vo.AvatarUploadVO;
 import com.itheim.program_platform_backend.domain.vo.LoginVO;
+import com.itheim.program_platform_backend.domain.vo.UserInfoVO;
 import com.itheim.program_platform_backend.enums.CommonResultCode;
 import com.itheim.program_platform_backend.exception.BusinessException;
 import com.itheim.program_platform_backend.mapper.AuthMapper;
 import com.itheim.program_platform_backend.service.AuthService;
+import com.itheim.program_platform_backend.utils.AliyunOSSOperator;
 import com.itheim.program_platform_backend.utils.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -28,6 +34,9 @@ public class AuthServiceImpl implements AuthService {
     private AuthMapper authMapper;
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private AliyunOSSOperator aliyunOSSOperator;
+
 
     // BCrypt密码加密器
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -110,9 +119,151 @@ public class AuthServiceImpl implements AuthService {
                 .role(user.getRole() == 1 ? "admin" : "user")
                 .nickname(user.getNickname() != null ? user.getNickname() : user.getUsername())
                 .token(token)
+                .avatar(user.getAvatar())
                 .expireTime(expireTime.format(FORMATTER))
                 .build();
 
     }
+
+    @Override
+    public UserInfoVO getUserInfo(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "用户ID不能为空");
+        }
+
+        User user = authMapper.findById(userId);
+        if (user == null) {
+            throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "用户不存在");
+        }
+
+        return UserInfoVO.builder()
+                .userId(user.getId())
+                .username(user.getUsername())
+                .nickname(user.getNickname())
+                .avatar(user.getAvatar())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .build();
+    }
+
+    @Override
+    public void updateUserInfo(Long userId, UpdateUserDTO updateUserDTO) {
+        if (userId == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "用户ID不能为空");
+        }
+
+        if (updateUserDTO == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "更新信息不能为空");
+        }
+
+        // 检查用户是否存在
+        User user = authMapper.findById(userId);
+        if (user == null) {
+            throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "用户不存在");
+        }
+
+        // 只更新非空字段
+        String nickname = updateUserDTO.getNickname() != null ? updateUserDTO.getNickname() : user.getNickname();
+        String phone = updateUserDTO.getPhone() != null ? updateUserDTO.getPhone() : user.getPhone();
+
+        authMapper.updateUserById(userId, nickname, phone);
+        log.info("用户信息更新成功，用户ID: {}", userId);
+    }
+
+    @Override
+    public AvatarUploadVO uploadAvatar(Long userId, MultipartFile file) {
+        if (userId == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "用户ID不能为空");
+        }
+
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "上传文件不能为空");
+        }
+
+        // 验证文件类型
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !isImageFile(originalFilename)) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "仅支持jpg/jpeg/png/webp格式的头像文件");
+        }
+
+        // 验证文件大小(限制10MB)
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "头像文件大小不能超过10MB");
+        }
+
+        try {
+            // 上传到阿里云OSS
+            String avatarUrl = aliyunOSSOperator.upload(file.getBytes(), originalFilename);
+
+            // 更新数据库中的头像URL
+            authMapper.updateAvatarById(userId, avatarUrl);
+
+            // 获取文件类型
+            String fileType = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+
+            log.info("用户头像上传成功，用户ID: {}, URL: {}", userId, avatarUrl);
+
+            return AvatarUploadVO.builder()
+                    .avatarUrl(avatarUrl)
+                    .avatarSize(file.getSize())
+                    .avatarType(fileType)
+                    .build();
+        } catch (Exception e) {
+            log.error("头像上传失败，用户ID: {}", userId, e);
+            throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "头像上传失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void changePassword(Long userId, ChangePasswordDTO changePasswordDTO) {
+        if (userId == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "用户ID不能为空");
+        }
+
+        if (changePasswordDTO == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "请求参数不能为空");
+        }
+
+        // 验证新密码和确认密码是否一致
+        if (!changePasswordDTO.getNewPassword().equals(changePasswordDTO.getConfirmPassword())) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "新密码和确认密码不一致");
+        }
+
+        // 查询用户信息
+        User user = authMapper.findById(userId);
+        if (user == null) {
+            throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "用户不存在");
+        }
+
+        // 验证原密码是否正确
+        if (!passwordEncoder.matches(changePasswordDTO.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "原密码错误");
+        }
+
+        // 验证新密码不能与原密码相同
+        if (passwordEncoder.matches(changePasswordDTO.getNewPassword(), user.getPassword())) {
+            throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "新密码不能与原密码相同");
+        }
+
+        // 加密新密码并更新
+        String encodedNewPassword = passwordEncoder.encode(changePasswordDTO.getNewPassword());
+        authMapper.updatePasswordById(userId, encodedNewPassword);
+
+        log.info("用户密码修改成功，用户ID: {}", userId);
+    }
+
+
+    /**
+     * 判断是否为图片文件
+     */
+    private boolean isImageFile(String filename) {
+        String lowerCase = filename.toLowerCase();
+        return lowerCase.endsWith(".jpg") ||
+                lowerCase.endsWith(".jpeg") ||
+                lowerCase.endsWith(".png") ||
+                lowerCase.endsWith(".webp");
+    }
+
+
 
 }
