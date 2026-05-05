@@ -146,6 +146,14 @@
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
+
+		<dependency>
+			<groupId>com.volcengine</groupId>
+			<artifactId>volcengine-java-sdk-ark-runtime</artifactId>
+			<version>1.0.2</version>
+		</dependency>
+
+
 	</dependencies>
 
 
@@ -162,6 +170,8 @@
 							<version>1.18.30</version>
 						</path>
 					</annotationProcessorPaths>
+					<source>16</source>
+					<target>16</target>
 				</configuration>
 			</plugin>
 			<plugin>
