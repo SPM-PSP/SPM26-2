@@ -74,6 +74,14 @@ public class UserController {
         return Result.success(detail);
     }
 
+    @ApiOperation("获取用户提交记录及进度")
+    @GetMapping("/study/statistics")
+    public Result<StudyStatisticsVO> getStudyStatistics() {
+        Long userId = UserContext.getCurrentUserId();
+        StudyStatisticsVO statistics = authService.getStudyStatistics(userId);
+        return Result.success(statistics);
+    }
+
 
 
 }
