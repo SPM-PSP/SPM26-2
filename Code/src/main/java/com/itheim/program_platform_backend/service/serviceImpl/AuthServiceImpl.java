@@ -4,13 +4,16 @@ import com.itheim.program_platform_backend.domain.dto.ChangePasswordDTO;
 import com.itheim.program_platform_backend.domain.dto.RegisterUserDTO;
 import com.itheim.program_platform_backend.domain.dto.UpdateUserDTO;
 import com.itheim.program_platform_backend.domain.po.User;
+import com.itheim.program_platform_backend.domain.po.UserStatistics;
 import com.itheim.program_platform_backend.domain.po.UserToken;
 import com.itheim.program_platform_backend.domain.vo.AvatarUploadVO;
 import com.itheim.program_platform_backend.domain.vo.LoginVO;
+import com.itheim.program_platform_backend.domain.vo.StudyStatisticsVO;
 import com.itheim.program_platform_backend.domain.vo.UserInfoVO;
 import com.itheim.program_platform_backend.enums.CommonResultCode;
 import com.itheim.program_platform_backend.exception.BusinessException;
 import com.itheim.program_platform_backend.mapper.AuthMapper;
+import com.itheim.program_platform_backend.mapper.UserStatisticsMapper;
 import com.itheim.program_platform_backend.service.AuthService;
 import com.itheim.program_platform_backend.utils.AliyunOSSOperator;
 import com.itheim.program_platform_backend.utils.JwtUtil;
@@ -32,6 +35,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private AuthMapper authMapper;
+    @Autowired
+    private UserStatisticsMapper userStatisticsMapper;
     @Autowired
     private JwtUtil jwtUtil;
     @Autowired
@@ -250,6 +255,33 @@ public class AuthServiceImpl implements AuthService {
         authMapper.updatePasswordById(userId, encodedNewPassword);
 
         log.info("用户密码修改成功，用户ID: {}", userId);
+    }
+
+    @Override
+    public StudyStatisticsVO getStudyStatistics(Long userId) {
+        if (userId == null) {
+            throw new BusinessException(CommonResultCode.PARAM_ERROR, "用户ID不能为空");
+        }
+
+        // 查询用户统计信息
+        UserStatistics userStatistics = userStatisticsMapper.selectByUserId(userId);
+        
+        // 如果用户统计记录不存在，创建默认记录
+        if (userStatistics == null) {
+            userStatistics = new UserStatistics();
+            userStatistics.setUserId(userId);
+            userStatistics.setTotalSubmit(0);
+            userStatistics.setTotalAccept(0);
+            userStatistics.setCreateTime(LocalDateTime.now());
+            userStatistics.setUpdateTime(LocalDateTime.now());
+            
+            userStatisticsMapper.insert(userStatistics);
+        }
+
+        return StudyStatisticsVO.builder()
+                .totalSubmit(userStatistics.getTotalSubmit())
+                .totalAccept(userStatistics.getTotalAccept())
+                .build();
     }
 
 
