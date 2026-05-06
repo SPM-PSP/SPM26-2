@@ -1,0 +1,67 @@
+:root {
+  --lc-bg: #101010;
+  --lc-surface: #161616;
+  --lc-surface-2: #1e1e1e;
+  --lc-border: #2d2d2d;
+  --lc-text: #ebebeb;
+  --lc-text-muted: #8c8c8c;
+  --lc-accent: #ffa116;
+  --lc-accent-dim: #e09200;
+  --lc-easy: #00b8a3;
+  --lc-medium: #ffc01e;
+  --lc-hard: #ff375f;
+  --lc-green: #2cbb5d;
+  --lc-red: #ff4d4f;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--lc-bg);
+  color: var(--lc-text);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--lc-text);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--lc-accent);
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: var(--lc-text);
+  background: var(--lc-surface-2);
+  border: 1px solid var(--lc-border);
+  border-radius: 6px;
+}
+
+textarea:focus,
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--lc-accent-dim);
+}
