@@ -11,11 +11,11 @@ NC='\033[0m'
 
 # ====================== 准备环境 ======================
 cd /tmp/work
-dos2unix -q /data/Main.java /data/input.txt /data/answer.txt 2>/dev/null
+dos2unix -q /data/main.cpp /data/input.txt /data/answer.txt 2>/dev/null
 
 # ====================== 1. 编译 (CE) ======================
 echo "[1/4] 正在编译..."
-javac /data/Main.java -d /tmp/work -encoding UTF-8 2>./compile.log
+g++ /data/main.cpp -o /tmp/work/main -O2 -std=c++17 -static 2>./compile.log
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}[CE] 编译错误${NC}"
@@ -27,7 +27,7 @@ echo -e "${GREEN}编译成功${NC}"
 
 # ====================== 2. 运行 (TLE / RE / MLE) ======================
 echo "[2/4] 正在运行 (限制: ${TIME_LIMIT}s, ${MEMORY_LIMIT})..."
-timeout -s KILL ${TIME_LIMIT} java -cp /tmp/work Main < /data/input.txt > ./output.txt 2>./runtime.log
+timeout -s KILL ${TIME_LIMIT} /tmp/work/main < /data/input.txt > ./output.txt 2>./runtime.log
 RUN_CODE=$?
 
 cp ./output.txt /logs/user_output.txt 2>/dev/null
