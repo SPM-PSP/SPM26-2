@@ -1,27 +1,24 @@
 server:
   port: 8080
-  servlet:
-    encoding:
-      charset: UTF-8
-      force: true
+
 
 spring:
   application:
     name: program_platform_backend
-  
+
   # 数据源配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/oj_platform?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: root
-  
+    password: 123456
+
   # Jackson 配置
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
     default-property-inclusion: non_null
-  
+
   # Spring MVC 配置
   mvc:
     pathmatch:
@@ -63,6 +60,13 @@ knife4j:
   setting:
     language: zh-CN
 
+#阿里云OSS
+aliyun:
+  oss:
+    endpoint: https://oss-cn-beijing.aliyuncs.com
+    bucketName: oj-platform-smp2
+    region: cn-beijing
+
 # 火山大模型 配置
 volc:
   ark:
@@ -88,6 +92,12 @@ judge:
   command-timeout: 15
   # 调试时设为true，保留临时文件
   keep-temp-files: false
+
+doubao:
+    api:
+      url: https://ark.cn-beijing.volces.com/api/v3/chat/completions # 示例地址，请以官方文档为准
+      key: your-api-key-here # 替换为你的API Key
+      model: ep-20240604xxxxxx # 替换为你创建的模型接入点ID (Endpoint ID)
 
 # 文件存储配置
 file-storage:
