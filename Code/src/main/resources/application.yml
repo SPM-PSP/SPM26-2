@@ -75,7 +75,7 @@ volc:
     # 模型接入点 (Model ID)，替换为你在控制台创建的 Endpoint ID
     model: doubao-seed-2-0-pro-260215
     base-url: https://ark.cn-beijing.volces.com/api/v3
-    timeout: 80000
+    timeout: 200000
 
 judge:
   #绝对路径，需要修改
@@ -99,12 +99,6 @@ judge:
       docker-image: python-judge:latest
       script-file: judge_python.sh
       source-file-name: main.py
-
-doubao:
-    api:
-      url: https://ark.cn-beijing.volces.com/api/v3/chat/completions # 示例地址，请以官方文档为准
-      key: ark-e52208a6-6d3b-4967-80dd-7e0de4ba5852-68281 # 替换为你的API Key
-      model: doubao-seed-2-0-lite-260215 # 替换为你创建的模型接入点ID (Endpoint ID)
 
 # 文件存储配置
 file-storage:
