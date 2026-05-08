@@ -103,8 +103,8 @@ judge:
 doubao:
     api:
       url: https://ark.cn-beijing.volces.com/api/v3/chat/completions # 示例地址，请以官方文档为准
-      key: your-api-key-here # 替换为你的API Key
-      model: ep-20240604xxxxxx # 替换为你创建的模型接入点ID (Endpoint ID)
+      key: ark-e52208a6-6d3b-4967-80dd-7e0de4ba5852-68281 # 替换为你的API Key
+      model: doubao-seed-2-0-lite-260215 # 替换为你创建的模型接入点ID (Endpoint ID)
 
 # 文件存储配置
 file-storage:
