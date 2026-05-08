@@ -142,7 +142,7 @@ if %errorlevel% neq 0 (
 :: 运行Docker
 docker run --rm ^
   --network none ^
-  --cap-drop=ALL ^
+--cap-drop=NET_RAW --cap-drop=SYS_PTRACE --cap-drop=SETUID --cap-drop=SETGID ^
   --cpus 1 ^
   --memory %MEMORY_LIMIT% ^
   --memory-swap %MEMORY_LIMIT% ^

@@ -85,6 +85,16 @@ public class JudgeServiceImpl implements JudgeService {
             String memoryLimit = request.getMemoryLimit() != null ? request.getMemoryLimit() : judgeConfig.getDefaultMemoryLimit();
             log.info("时间限制: {}s, 内存限制: {}", timeLimit, memoryLimit);
 
+            // 将内存限制转换为 KB（用于传递给判题脚本）
+            int memoryLimitKB = parseMemoryLimitToKB(memoryLimit);
+            log.info("内存限制转换: {} -> {} KB", memoryLimit, memoryLimitKB);
+
+            // Docker 容器使用固定的较大内存上限，确保编译能通过
+            // 真正的内存限制由判题脚本中的 ulimit 控制
+            String dockerMemoryLimit = "512m";
+            log.info("Docker 容器内存限制: {} (编译用)", dockerMemoryLimit);
+            log.info("程序运行内存限制: {} KB (ulimit 控制)", memoryLimitKB);
+
             String dockerDataPath = FileOperationUtil.toDockerPath(dataDir);
             String dockerLogsPath = FileOperationUtil.toDockerPath(logsDir);
             String dockerScriptPath = FileOperationUtil.toDockerPath(judgeShTarget);
@@ -94,14 +104,14 @@ public class JudgeServiceImpl implements JudgeService {
                     "--network", "none",
                     "--cap-drop=ALL",
                     "--cpus", "1",
-                    "--memory", memoryLimit,
-                    "--memory-swap", memoryLimit,
+                    "--memory", dockerMemoryLimit,
+                    "--memory-swap", dockerMemoryLimit,
                     "-v", dockerDataPath + ":/data:ro",
                     "-v", dockerLogsPath + ":/logs:rw",
                     "-v", dockerScriptPath + ":/" + langConfig.getScriptFile() + ":ro",
                     "--entrypoint", "sh",
                     langConfig.getDockerImage(),
-                    "/" + langConfig.getScriptFile(), String.valueOf(timeLimit), memoryLimit
+                    "/" + langConfig.getScriptFile(), String.valueOf(timeLimit), String.valueOf(memoryLimitKB)
             };
 
             log.info("========== 执行 Docker 命令 ==========");
@@ -128,6 +138,14 @@ public class JudgeServiceImpl implements JudgeService {
                 }
                 case RE -> {
                     log.info("运行时错误，读取运行日志");
+                    resp.setRuntimeLog(FileOperationUtil.readFile(logsDir + "runtime.log"));
+                }
+                case TLE -> {
+                    log.info("时间超限，读取运行日志");
+                    resp.setRuntimeLog(FileOperationUtil.readFile(logsDir + "runtime.log"));
+                }
+                case MLE -> {
+                    log.info("内存超限，读取运行日志");
                     resp.setRuntimeLog(FileOperationUtil.readFile(logsDir + "runtime.log"));
                 }
                 case WA -> {
@@ -214,6 +232,40 @@ public class JudgeServiceImpl implements JudgeService {
             throw new JudgeException("判题脚本不可读: " + scriptPath);
         }
         log.debug("判题脚本验证通过: {}", scriptPath);
+    }
+
+    /**
+     * 将内存限制字符串转换为 KB（整数）
+     * 支持格式: "256m", "500M", "1g", "1G", "524288" (已经是KB)
+     */
+    private int parseMemoryLimitToKB(String memoryLimit) {
+        if (memoryLimit == null || memoryLimit.isEmpty()) {
+            return 256 * 1024; // 默认 256MB
+        }
+
+        memoryLimit = memoryLimit.trim().toLowerCase();
+
+        try {
+            if (memoryLimit.endsWith("g")) {
+                // GB 转 KB
+                double gb = Double.parseDouble(memoryLimit.substring(0, memoryLimit.length() - 1));
+                return (int) (gb * 1024 * 1024);
+            } else if (memoryLimit.endsWith("m")) {
+                // MB 转 KB
+                double mb = Double.parseDouble(memoryLimit.substring(0, memoryLimit.length() - 1));
+                return (int) (mb * 1024);
+            } else if (memoryLimit.endsWith("k")) {
+                // KB
+                return Integer.parseInt(memoryLimit.substring(0, memoryLimit.length() - 1));
+            } else {
+                // 纯数字，假设是字节，转换为 KB
+                long bytes = Long.parseLong(memoryLimit);
+                return (int) (bytes / 1024);
+            }
+        } catch (NumberFormatException e) {
+            log.warn("内存限制格式解析失败: {}, 使用默认值 256MB", memoryLimit);
+            return 256 * 1024;
+        }
     }
 
     @Override
