@@ -78,6 +78,8 @@ volc:
     timeout: 80000
 
 judge:
+
+  #绝对路径，需要修改
   script-path: C:/Users/27584/Desktop/SPM26-2/SPM26-2/Docker/judger-docker/
   temp-task-root: C:/tmp/judge-tasks/
   default-time-limit: 5
