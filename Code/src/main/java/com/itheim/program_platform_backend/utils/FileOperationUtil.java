@@ -1,11 +1,13 @@
 package com.itheim.program_platform_backend.utils;
 
 import com.itheim.program_platform_backend.exception.JudgeException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 public class FileOperationUtil {
 
     public static void createDirIfNotExists(String path) {
@@ -24,8 +26,21 @@ public class FileOperationUtil {
     }
 
     public static void copyFile(String source, String target) {
+        File sourceFile = new File(source);
+
+        if (!sourceFile.exists()) {
+            String absolutePath = sourceFile.getAbsolutePath();
+            log.error("源文件不存在 - 相对路径: {}, 绝对路径: {}", source, absolutePath);
+            throw new JudgeException("源文件不存在: " + source + " (绝对路径: " + absolutePath + ")");
+        }
+
+        if (!sourceFile.isFile()) {
+            throw new JudgeException("源路径不是文件: " + source);
+        }
+
         try {
-            FileUtils.copyFile(new File(source), new File(target));
+            FileUtils.copyFile(sourceFile, new File(target));
+            log.debug("文件复制成功: {} -> {}", source, target);
         } catch (Exception e) {
             throw new JudgeException("复制文件失败: " + source + " -> " + target, e);
         }
@@ -49,7 +64,6 @@ public class FileOperationUtil {
         }
     }
 
-    // Windows路径转Docker可识别格式
     public static String toDockerPath(String localPath) {
         return localPath.replace("\\", "/");
     }

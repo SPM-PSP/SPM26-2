@@ -17,24 +17,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/judge")
 @RequiredArgsConstructor
-@Api(tags = "judge认证接口")
+@Api(tags = "判题接口")
 public class JudgeController {
 
     private final JudgeService judgeService;
 
-    /**
-     * C++代码评测接口
-     */
-    @ApiOperation("判题接口")
-    @PostMapping("/cpp")
+    @ApiOperation("代码判题接口（支持C++、Java、Python）")
+    @PostMapping("/submit")
     public ResponseEntity<JudgeResponse> judge(@Valid @RequestBody JudgeRequest request) {
         return ResponseEntity.ok(judgeService.judge(request));
     }
 
-    /**
-     * Docker健康检查接口
-     */
-    @ApiOperation("docker启动确认")
+    @ApiOperation("Docker健康检查")
     @PostMapping("/check-docker")
     public ResponseEntity<Boolean> checkDocker() {
         return ResponseEntity.ok(judgeService.checkDockerStatus());

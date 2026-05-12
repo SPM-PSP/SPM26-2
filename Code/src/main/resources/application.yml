@@ -75,29 +75,30 @@ volc:
     # 模型接入点 (Model ID)，替换为你在控制台创建的 Endpoint ID
     model: doubao-seed-2-0-pro-260215
     base-url: https://ark.cn-beijing.volces.com/api/v3
-    timeout: 80000
+    timeout: 200000
 
-# 判题oj 配置
 judge:
-  # 必须修改为你本地存放 judge.sh 的目录
-  script-path: D:/judge-docker/
-  # 临时任务根目录（自动创建）
-  temp-task-root: D:/judge-docker/tasks/
-  # Docker镜像名称（和你本地构建的一致）
-  docker-image: judge-cpp:latest
-  # 默认评测限制
+  #绝对路径，需要修改
+  script-path: C:/Users/27584/Desktop/SPM26-2/SPM26-2/Docker/judger-docker/
+  temp-task-root: C:/tmp/judge-tasks/
   default-time-limit: 5
   default-memory-limit: 256m
-  # 命令执行超时（比评测时间多10秒缓冲）
-  command-timeout: 15
-  # 调试时设为true，保留临时文件
+  command-timeout: 30
   keep-temp-files: false
 
-doubao:
-    api:
-      url: https://ark.cn-beijing.volces.com/api/v3/chat/completions # 示例地址，请以官方文档为准
-      key: your-api-key-here # 替换为你的API Key
-      model: ep-20240604xxxxxx # 替换为你创建的模型接入点ID (Endpoint ID)
+  languages:
+    cpp:
+      docker-image: gcc-judge:latest
+      script-file: judge_cpp.sh
+      source-file-name: main.cpp
+    java:
+      docker-image: java-judge:latest
+      script-file: judge_java.sh
+      source-file-name: Main.java
+    python:
+      docker-image: python-judge:latest
+      script-file: judge_python.sh
+      source-file-name: main.py
 
 # 文件存储配置
 file-storage:

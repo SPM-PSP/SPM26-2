@@ -6,7 +6,8 @@ import lombok.Getter;
 public enum JudgeResultEnum {
     AC(0, "AC", "答案正确"),
     CE(2, "CE", "编译错误"),
-    TLE(137, "TLE", "时间/内存超限"),
+    TLE(137, "TLE", "时间超限"),
+    MLE(138, "MLE", "内存超限"),
     RE(3, "RE", "运行时错误"),
     WA(4, "WA", "答案错误"),
     SYSTEM_ERROR(-1, "SYSTEM_ERROR", "系统内部错误");
