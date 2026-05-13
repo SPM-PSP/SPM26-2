@@ -187,7 +187,7 @@ async function runJudge() {
       <textarea v-model="code" class="editor" spellcheck="false" />
 
       <div class="io-block">
-        <label>测试输入 <span class="hint">（与下方期望输出一起送给 Docker 判题服务）</span></label>
+        <label>测试输入</label>
         <textarea v-model="customInput" class="io" spellcheck="false" />
         <label>期望输出</label>
         <textarea v-model="customAnswer" class="io" spellcheck="false" />
@@ -207,7 +207,7 @@ async function runJudge() {
             <pre class="log sm">{{ judgeResult.userOutput }}</pre>
           </template>
         </template>
-        <p v-else class="muted hint">后端接口：<code>/api/judge/cpp</code>，需本机 Docker 判题环境可用。</p>
+        <p v-else class="muted hint">运行代码后在此查看评测结果。</p>
       </div>
     </section>
   </div>
@@ -360,10 +360,6 @@ async function runJudge() {
   border-bottom: 1px solid var(--lc-border);
 }
 
-.sol:last-child {
-  border-bottom: none;
-}
-
 .code-block {
   margin: 8px 0 0;
   padding: 12px;
@@ -384,8 +380,6 @@ async function runJudge() {
 
 .hint {
   font-size: 0.75rem;
-  color: var(--lc-text-muted);
-  font-weight: 400;
 }
 
 .editor-head {
@@ -415,10 +409,6 @@ async function runJudge() {
   font-size: 0.8rem;
 }
 
-.btn-ghost:hover {
-  color: var(--lc-text);
-}
-
 .btn-run {
   padding: 6px 16px;
   border-radius: 6px;
@@ -445,10 +435,6 @@ async function runJudge() {
   resize: vertical;
   background: #0d0d0d;
   border-radius: 8px;
-}
-
-.io-block {
-  margin-top: 14px;
 }
 
 .io-block label {

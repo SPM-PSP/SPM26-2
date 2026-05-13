@@ -17,7 +17,6 @@ export function difficultyClass(d: string): string {
   return ''
 }
 
-/** 提交记录 status / 详情 result：0 通过 1 CE 2 RE 3 TLE */
 export function verdictText(result: number): string {
   switch (result) {
     case 0:
@@ -38,7 +37,6 @@ export function verdictClass(result: number): string {
   return 'verdict-wa'
 }
 
-/** Docker 判题接口 code：0 AC, 2 CE, 137 TLE, 3 RE, 4 WA */
 export function judgeVerdict(code: number, status: string): string {
   if (code === 0) return '答案正确 (AC)'
   if (code === 2) return '编译错误 (CE)'

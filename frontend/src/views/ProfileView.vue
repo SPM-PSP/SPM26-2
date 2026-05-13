@@ -26,7 +26,6 @@ onMounted(async () => {
 <template>
   <div class="page">
     <h1>个人资料</h1>
-    <p class="sub"><code>/api/v1/user/info</code></p>
     <div v-if="loading" class="card muted">加载中…</div>
     <div v-else-if="err" class="card err">{{ err }}</div>
     <div v-else-if="info" class="card">
@@ -54,38 +53,27 @@ onMounted(async () => {
 .page {
   max-width: 480px;
 }
-
 h1 {
-  margin: 0 0 6px;
-}
-
-.sub {
   margin: 0 0 16px;
-  color: var(--lc-text-muted);
-  font-size: 0.85rem;
 }
-
 .card {
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
   border-radius: 10px;
   padding: 20px;
 }
-
 .row {
   display: flex;
   gap: 16px;
   align-items: center;
   margin-bottom: 20px;
 }
-
 .avatar {
   width: 64px;
   height: 64px;
   border-radius: 50%;
   object-fit: cover;
 }
-
 .avatar.ph {
   display: flex;
   align-items: center;
@@ -94,12 +82,10 @@ h1 {
   color: var(--lc-text-muted);
   font-size: 1.5rem;
 }
-
 .name {
   font-weight: 700;
   font-size: 1.1rem;
 }
-
 dl {
   margin: 0;
   display: grid;
@@ -107,24 +93,16 @@ dl {
   gap: 8px 12px;
   font-size: 0.9rem;
 }
-
 dt {
   color: var(--lc-text-muted);
 }
-
 dd {
   margin: 0;
 }
-
 .muted {
   color: var(--lc-text-muted);
 }
-
 .err {
   color: var(--lc-red);
-}
-
-code {
-  color: var(--lc-accent);
 }
 </style>

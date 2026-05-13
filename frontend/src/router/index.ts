@@ -4,16 +4,8 @@ import { useAuthStore } from '@/stores/auth'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-    {
-      path: '/',
-      name: 'home',
-      redirect: '/problems',
-    },
-    {
-      path: '/problems',
-      name: 'problems',
-      component: () => import('@/views/ProblemListView.vue'),
-    },
+    { path: '/', name: 'home', redirect: '/login' },
+    { path: '/problems', name: 'problems', component: () => import('@/views/ProblemListView.vue') },
     {
       path: '/problems/:id',
       name: 'problem-detail',
@@ -39,26 +31,17 @@ const router = createRouter({
       component: () => import('@/views/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
-    {
-      path: '/ai',
-      name: 'ai-lab',
-      component: () => import('@/views/AiLabView.vue'),
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/LoginView.vue'),
-    },
-    {
-      path: '/register',
-      name: 'register',
-      component: () => import('@/views/RegisterView.vue'),
-    },
+    { path: '/ai', name: 'ai-lab', component: () => import('@/views/AiLabView.vue') },
+    { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
+    { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
   ],
 })
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
+  if ((to.name === 'login' || to.name === 'register') && auth.isLoggedIn) {
+    return { path: '/problems' }
+  }
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }

@@ -1,7 +1,6 @@
 import http from './http'
 import type { CodeAnalysisResponse, ProblemGenerateResponse } from '@/types/api'
 
-/** 后端直接返回 DTO，无 Result 包装 */
 export async function generateProblem(payload: {
   plate: string
   difficulty: string

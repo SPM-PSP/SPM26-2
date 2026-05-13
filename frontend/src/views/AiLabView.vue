@@ -36,12 +36,8 @@ async function onGenerate() {
     parts.push(`## ${data.problemName}\n\n${data.problemDesc}`)
     if (data.inputFormat) parts.push(`### 输入格式\n${data.inputFormat}`)
     if (data.outputFormat) parts.push(`### 输出格式\n${data.outputFormat}`)
-    if (data.sampleInput?.length) {
-      parts.push(`### 样例输入\n${data.sampleInput.join('\n---\n')}`)
-    }
-    if (data.sampleOutput?.length) {
-      parts.push(`### 样例输出\n${data.sampleOutput.join('\n---\n')}`)
-    }
+    if (data.sampleInput?.length) parts.push(`### 样例输入\n${data.sampleInput.join('\n---\n')}`)
+    if (data.sampleOutput?.length) parts.push(`### 样例输出\n${data.sampleOutput.join('\n---\n')}`)
     genOut.value = parts.join('\n\n')
   } catch (e: unknown) {
     genErr.value = e instanceof Error ? e.message : '生成失败'
@@ -72,20 +68,15 @@ async function onAnalyze() {
 <template>
   <div class="page">
     <h1>AI 实验室</h1>
-    <p class="sub">对接后端 <code>/api/algorithm/generate-problem</code> 与 <code>/api/algorithm/analyze-code</code>（无需登录）。</p>
-
     <section class="card">
       <h2>生成练习题</h2>
       <div class="row">
-        <label>板块</label>
         <select v-model="plate">
           <option v-for="p in plates" :key="p" :value="p">{{ p }}</option>
         </select>
-        <label>难度</label>
         <select v-model="difficulty">
           <option v-for="d in diffs" :key="d" :value="d">{{ d }}</option>
         </select>
-        <label>语言</label>
         <select v-model="targetLanguage">
           <option v-for="l in langs" :key="l" :value="l">{{ l }}</option>
         </select>
@@ -96,11 +87,9 @@ async function onAnalyze() {
       <p v-if="genErr" class="err">{{ genErr }}</p>
       <pre v-if="genOut" class="out">{{ genOut }}</pre>
     </section>
-
     <section class="card">
       <h2>代码分析</h2>
       <div class="row">
-        <label>语言</label>
         <select v-model="lang">
           <option v-for="l in langs" :key="l" :value="l">{{ l }}</option>
         </select>
@@ -126,28 +115,18 @@ async function onAnalyze() {
 .page {
   max-width: 900px;
 }
-
 h1 {
-  margin: 0 0 6px;
+  margin: 0 0 16px;
 }
-
 h2 {
   margin: 0 0 12px;
   font-size: 1.05rem;
 }
-
 h3 {
   margin: 12px 0 6px;
   font-size: 0.85rem;
   color: var(--lc-text-muted);
 }
-
-.sub {
-  margin: 0 0 18px;
-  color: var(--lc-text-muted);
-  font-size: 0.88rem;
-}
-
 .card {
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
@@ -155,24 +134,15 @@ h3 {
   padding: 18px;
   margin-bottom: 16px;
 }
-
 .row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 10px;
   margin-bottom: 12px;
 }
-
-.row label {
-  font-size: 0.8rem;
-  color: var(--lc-text-muted);
-}
-
 select {
   padding: 6px 10px;
 }
-
 .btn {
   padding: 8px 18px;
   border-radius: 8px;
@@ -182,12 +152,10 @@ select {
   font-weight: 600;
   cursor: pointer;
 }
-
 .btn:disabled {
   opacity: 0.6;
   cursor: wait;
 }
-
 .editor {
   width: 100%;
   min-height: 140px;
@@ -198,7 +166,6 @@ select {
   border-radius: 8px;
   margin-bottom: 10px;
 }
-
 .out {
   margin: 12px 0 0;
   padding: 14px;
@@ -209,24 +176,16 @@ select {
   max-height: 360px;
   overflow: auto;
 }
-
 .ana p {
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.55;
 }
-
 .pre {
   white-space: pre-wrap;
 }
-
 .err {
   color: var(--lc-red);
   font-size: 0.88rem;
-}
-
-code {
-  font-size: 0.85em;
-  color: var(--lc-accent);
 }
 </style>

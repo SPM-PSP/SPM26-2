@@ -43,7 +43,7 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <button type="button" class="back" @click="router.push('/submissions')">← 返回列表</button>
+    <button type="button" class="back" @click="router.push('/submissions')">← 返回</button>
     <div v-if="loading" class="muted">加载中…</div>
     <div v-else-if="err || !detail" class="err">{{ err || '无数据' }}</div>
     <div v-else class="card">
@@ -52,8 +52,10 @@ onMounted(() => {
         <span class="verdict" :class="verdictClass(detail.result)">{{ verdictText(detail.result) }}</span>
       </div>
       <p class="meta">
-        提交 #{{ detail.submissionId }} · {{ detail.language }} · {{ detail.submitTime }} · 通过
-        {{ detail.passCount }}/{{ detail.totalCount }} · 用时 {{ detail.runTime }} ms · 内存 {{ detail.memory }} KB
+        #{{ detail.submissionId }} · {{ detail.language }} · {{ detail.submitTime }} · {{ detail.passCount }}/{{
+          detail.totalCount
+        }}
+        · {{ detail.runTime }} ms · {{ detail.memory }} KB
       </p>
       <p v-if="detail.errorMsg" class="err-msg">{{ detail.errorMsg }}</p>
       <h3 class="h">代码</h3>
@@ -66,7 +68,6 @@ onMounted(() => {
 .page {
   max-width: 900px;
 }
-
 .back {
   margin-bottom: 14px;
   padding: 6px 12px;
@@ -76,60 +77,46 @@ onMounted(() => {
   color: var(--lc-text-muted);
   cursor: pointer;
 }
-
-.back:hover {
-  color: var(--lc-text);
-}
-
 .card {
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
   border-radius: 10px;
   padding: 20px;
 }
-
 .head {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
-
 h1 {
   margin: 0;
   font-size: 1.2rem;
 }
-
 .verdict {
   font-weight: 700;
   font-size: 0.9rem;
 }
-
 .verdict-ac {
   color: var(--lc-green);
 }
-
 .verdict-wa {
   color: var(--lc-red);
 }
-
 .meta {
   font-size: 0.85rem;
   color: var(--lc-text-muted);
   margin: 10px 0;
 }
-
 .err-msg {
   color: var(--lc-red);
   font-size: 0.88rem;
 }
-
 .h {
   margin: 16px 0 8px;
   font-size: 0.85rem;
   color: var(--lc-text-muted);
 }
-
 .code {
   margin: 0;
   padding: 14px;
@@ -139,12 +126,10 @@ h1 {
   overflow: auto;
   max-height: 480px;
 }
-
 .muted,
 .err {
   padding: 20px;
 }
-
 .err {
   color: var(--lc-red);
 }

@@ -56,8 +56,6 @@ function applyFilter() {
 <template>
   <div class="page">
     <h1>提交记录</h1>
-    <p class="sub">数据来源：<code>/api/v1/user/submission/list</code></p>
-
     <div class="toolbar card">
       <select v-model="resultFilter" @change="applyFilter">
         <option value="">全部结果</option>
@@ -68,9 +66,7 @@ function applyFilter() {
       </select>
       <span class="muted">共 {{ total }} 条</span>
     </div>
-
     <p v-if="err" class="err">{{ err }}</p>
-
     <div class="card table-wrap">
       <div v-if="loading" class="muted pad">加载中…</div>
       <table v-else class="table">
@@ -95,7 +91,6 @@ function applyFilter() {
       </table>
       <div v-if="!loading && !list.length" class="muted pad">暂无提交</div>
     </div>
-
     <div v-if="pages > 1" class="pager">
       <button type="button" class="btn" :disabled="page <= 1" @click="page--; load()">上一页</button>
       <span>{{ page }} / {{ pages }}</span>
@@ -108,17 +103,9 @@ function applyFilter() {
 .page {
   max-width: 900px;
 }
-
 h1 {
-  margin: 0 0 6px;
-}
-
-.sub {
   margin: 0 0 16px;
-  color: var(--lc-text-muted);
-  font-size: 0.9rem;
 }
-
 .card {
   background: var(--lc-surface);
   border: 1px solid var(--lc-border);
@@ -126,41 +113,33 @@ h1 {
   padding: 12px 16px;
   margin-bottom: 12px;
 }
-
 .toolbar {
   display: flex;
   align-items: center;
   gap: 16px;
 }
-
 select {
   padding: 8px 12px;
 }
-
 .muted {
   color: var(--lc-text-muted);
 }
-
 .pad {
   padding: 32px;
   text-align: center;
 }
-
 .err {
   color: var(--lc-red);
 }
-
 .table-wrap {
   padding: 0;
   overflow: hidden;
 }
-
 .table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.88rem;
 }
-
 .table th {
   text-align: left;
   padding: 10px 14px;
@@ -168,33 +147,26 @@ select {
   border-bottom: 1px solid var(--lc-border);
   background: var(--lc-surface-2);
 }
-
 .table td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--lc-border);
 }
-
 .row {
   cursor: pointer;
 }
-
 .row:hover {
   background: rgba(255, 161, 22, 0.05);
 }
-
 .verdict {
   font-weight: 600;
   font-size: 0.85rem;
 }
-
 .verdict-ac {
   color: var(--lc-green);
 }
-
 .verdict-wa {
   color: var(--lc-text-muted);
 }
-
 .pager {
   display: flex;
   justify-content: center;
@@ -202,7 +174,6 @@ select {
   gap: 16px;
   margin-top: 12px;
 }
-
 .btn {
   padding: 8px 14px;
   border-radius: 8px;
@@ -211,14 +182,8 @@ select {
   color: var(--lc-text);
   cursor: pointer;
 }
-
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-}
-
-code {
-  font-size: 0.85em;
-  color: var(--lc-accent);
 }
 </style>

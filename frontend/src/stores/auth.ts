@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   try {
     const raw = localStorage.getItem(USER_KEY)
-    if (raw) userPreview.value = JSON.parse(raw)
+    if (raw) userPreview.value = JSON.parse(raw) as Partial<LoginVO>
   } catch {
     /* ignore */
   }

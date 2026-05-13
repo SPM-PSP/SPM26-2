@@ -27,7 +27,7 @@ async function loadCats() {
     const res = await fetchCategories()
     if (res.code === 200) categories.value = res.data ?? []
   } catch {
-    /* optional */
+    /* ignore */
   }
 }
 
@@ -66,6 +66,11 @@ function toggleCat(name: string) {
   else selectedCats.value.push(name)
 }
 
+function onTagClick(name: string) {
+  toggleCat(name)
+  search()
+}
+
 function openProblem(id: number) {
   router.push({ name: 'problem-detail', params: { id: String(id) } })
 }
@@ -85,7 +90,7 @@ function search() {
   <div class="page">
     <div class="head">
       <h1>题库</h1>
-      <p class="sub">筛选题目，点击标题进入做题页（界面风格参考 LeetCode 暗色题库）。</p>
+      <p class="sub">筛选题目，点击进入做题页。</p>
     </div>
 
     <div class="toolbar card">
@@ -112,7 +117,7 @@ function search() {
         type="button"
         class="tag"
         :class="{ on: selectedCats.includes(c.categoryName) }"
-        @click="toggleCat(c.categoryName); search()"
+        @click="onTagClick(c.categoryName)"
       >
         {{ c.categoryName }}
       </button>
@@ -155,27 +160,9 @@ function search() {
     </div>
 
     <div v-if="pages > 1" class="pager">
-      <button
-        type="button"
-        :disabled="currentPage <= 1"
-        class="btn-page"
-        @click="
-          currentPage--;
-          load()
-        "
-      >
-        上一页
-      </button>
+      <button type="button" :disabled="currentPage <= 1" class="btn-page" @click="currentPage--; load()">上一页</button>
       <span class="page-info">{{ currentPage }} / {{ pages }}</span>
-      <button
-        type="button"
-        :disabled="currentPage >= pages"
-        class="btn-page"
-        @click="
-          currentPage++;
-          load()
-        "
-      >
+      <button type="button" :disabled="currentPage >= pages" class="btn-page" @click="currentPage++; load()">
         下一页
       </button>
     </div>
@@ -232,10 +219,6 @@ function search() {
   color: #111;
   font-weight: 600;
   cursor: pointer;
-}
-
-.btn-accent:hover {
-  filter: brightness(1.05);
 }
 
 .tags {

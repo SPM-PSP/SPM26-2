@@ -1,6 +1,3 @@
-/**
- * 与《03-接口文档》2.2 / 2.3 参数说明一致的前端校验（仅真实请求时使用）
- */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function validateRegisterPayload(input: {

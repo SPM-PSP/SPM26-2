@@ -1,6 +1,13 @@
 import http from './http'
 import type { ApiResult, PageResult, SubmissionDetail, SubmissionListItem, UserInfo } from '@/types/api'
 
+function appendRepeated(key: string, values: string[] | undefined, sp: URLSearchParams) {
+  if (!values?.length) return
+  for (const v of values) {
+    sp.append(key, v)
+  }
+}
+
 export async function fetchUserInfo() {
   const { data } = await http.get<ApiResult<UserInfo>>('/api/v1/user/info')
   return data
@@ -13,13 +20,6 @@ export interface SubmissionListParams {
   keyword?: string
   problemCategory?: string[]
   sortOrder?: string
-}
-
-function appendRepeated(key: string, values: string[] | undefined, sp: URLSearchParams) {
-  if (!values?.length) return
-  for (const v of values) {
-    sp.append(key, v)
-  }
 }
 
 export async function fetchSubmissionList(params: SubmissionListParams) {
