@@ -33,6 +33,13 @@ const javaTemplate = `public class Main {
 }
 `
 
+const pythonTemplate = `def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+`
+
 const code = ref(cppTemplate)
 const judgeResult = ref<JudgeSubmitResult | null>(null)
 const submitApiMessage = ref('')
@@ -43,10 +50,12 @@ const judgeLang = ref<JudgeApiLanguage>('C++')
 const problemId = computed(() => Number(props.id || route.params.id))
 
 watch(judgeLang, (lang) => {
-  if (lang === 'C++' && code.value.trim().startsWith('public class Main')) {
+  if (lang === 'C++' && (code.value.trim().startsWith('public class Main') || code.value.includes('def main'))) {
     code.value = cppTemplate
-  } else if (lang === 'Java' && code.value.includes('#include')) {
+  } else if (lang === 'Java' && (code.value.includes('#include') || code.value.includes('def main'))) {
     code.value = javaTemplate
+  } else if (lang === 'Python' && (code.value.includes('#include') || code.value.includes('public class Main'))) {
+    code.value = pythonTemplate
   }
 })
 
@@ -86,20 +95,20 @@ async function loadSolution() {
 }
 
 watch(
-  () => tab.value,
-  (t) => {
-    if (t === 'solution' && !solutions.value.length && !solLoading.value) void loadSolution()
-  },
+    () => tab.value,
+    (t) => {
+      if (t === 'solution' && !solutions.value.length && !solLoading.value) void loadSolution()
+    },
 )
 
 watch(
-  () => props.id,
-  () => {
-    void loadDetail()
-    solutions.value = []
-    judgeResult.value = null
-    submitApiMessage.value = ''
-  },
+    () => props.id,
+    () => {
+      void loadDetail()
+      solutions.value = []
+      judgeResult.value = null
+      submitApiMessage.value = ''
+    },
 )
 
 onMounted(() => {
@@ -203,6 +212,7 @@ function goSubmissionDetail() {
           <select v-model="judgeLang" class="lang-select">
             <option value="C++">C++</option>
             <option value="Java">Java</option>
+            <option value="Python">Python</option>
           </select>
         </label>
         <div class="actions">
@@ -228,8 +238,8 @@ function goSubmissionDetail() {
         <template v-else-if="judgeResult">
           <div class="verdict-line" :class="{ ac: judgeResult.result === 0 }">
             <span class="verdict-pill" :class="verdictClass(judgeResult.result)">{{
-              verdictText(judgeResult.result)
-            }}</span>
+                verdictText(judgeResult.result)
+              }}</span>
             <span v-if="submitApiMessage" class="muted sm"> — {{ submitApiMessage }}</span>
           </div>
           <p class="meta-line">

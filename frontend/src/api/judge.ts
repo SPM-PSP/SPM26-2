@@ -11,6 +11,6 @@ export interface JudgeSubmitBody {
 }
 
 export async function judgeSubmit(body: JudgeSubmitBody) {
-  const { data } = await http.post<ApiResult<JudgeSubmitResult>>('/api/v1/judge/submit', body)
+  const { data } = await http.post<ApiResult<JudgeSubmitResult>>('/api/v1/judge/submit_to_back', body)
   return data
 }
