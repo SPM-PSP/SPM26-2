@@ -1,46 +1,16 @@
 import http from './http'
-import type { JudgeResponse } from '@/types/api'
+import type { ApiResult, JudgeSubmitResult } from '@/types/api'
 
-export type JudgeLanguageKey = 'cpp' | 'java' | 'python'
+/** 与接口文档 5.2 一致：C++、Java */
+export type JudgeApiLanguage = 'C++' | 'Java'
 
 export interface JudgeSubmitBody {
+  problemId: number
+  language: JudgeApiLanguage
   code: string
-  input: string
-  answer: string
-  language: JudgeLanguageKey
-  timeLimit?: number
-  memoryLimit?: string
 }
 
 export async function judgeSubmit(body: JudgeSubmitBody) {
-  // #region agent log
-  fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
-    body: JSON.stringify({
-      sessionId: '69ddfc',
-      location: 'judge.ts:judgeSubmit',
-      message: 'submit request',
-      data: { language: body.language, codeLen: body.code?.length ?? 0 },
-      timestamp: Date.now(),
-      hypothesisId: 'H1',
-    }),
-  }).catch(() => {})
-  // #endregion
-  const { data } = await http.post<JudgeResponse>('/api/judge/submit', body)
-  // #region agent log
-  fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
-    body: JSON.stringify({
-      sessionId: '69ddfc',
-      location: 'judge.ts:judgeSubmit',
-      message: 'submit response',
-      data: { verdictCode: data.code, status: data.status },
-      timestamp: Date.now(),
-      hypothesisId: 'H1',
-    }),
-  }).catch(() => {})
-  // #endregion
+  const { data } = await http.post<ApiResult<JudgeSubmitResult>>('/api/v1/judge/submit', body)
   return data
 }

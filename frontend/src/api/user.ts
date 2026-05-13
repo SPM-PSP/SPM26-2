@@ -37,6 +37,8 @@ export async function fetchSubmissionList(params: SubmissionListParams) {
 }
 
 export async function fetchSubmissionDetail(submissionId: number) {
-  const { data } = await http.get<ApiResult<SubmissionDetail>>(`/api/v1/user/detail/${submissionId}`)
+  const { data } = await http.get<ApiResult<SubmissionDetail>>(
+    `/api/v1/user/study/statistics/detail/${submissionId}`,
+  )
   return data
 }

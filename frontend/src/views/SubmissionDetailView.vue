@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { fetchAiEvaluation } from '@/api/ai'
 import { fetchSubmissionDetail } from '@/api/user'
-import type { SubmissionDetail } from '@/types/api'
+import type { AiEvaluationDetail, SubmissionDetail } from '@/types/api'
 import { verdictClass, verdictText } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
@@ -11,9 +12,15 @@ const detail = ref<SubmissionDetail | null>(null)
 const loading = ref(true)
 const err = ref('')
 
+const aiEval = ref<AiEvaluationDetail | null>(null)
+const aiLoading = ref(false)
+const aiErr = ref('')
+
 async function load() {
   loading.value = true
   err.value = ''
+  aiEval.value = null
+  aiErr.value = ''
   try {
     const res = await fetchSubmissionDetail(Number(props.id))
     if (res.code !== 200) {
@@ -26,6 +33,26 @@ async function load() {
     err.value = e instanceof Error ? e.message : '网络错误'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadAiEvaluation() {
+  const id = Number(props.id)
+  if (!Number.isFinite(id)) return
+  aiLoading.value = true
+  aiErr.value = ''
+  aiEval.value = null
+  try {
+    const res = await fetchAiEvaluation(id)
+    if (res.code !== 200 || !res.data) {
+      aiErr.value = res.message || '暂无 AI 评测'
+      return
+    }
+    aiEval.value = res.data
+  } catch (e: unknown) {
+    aiErr.value = e instanceof Error ? e.message : '请求失败'
+  } finally {
+    aiLoading.value = false
   }
 }
 
@@ -60,6 +87,31 @@ onMounted(() => {
       <p v-if="detail.errorMsg" class="err-msg">{{ detail.errorMsg }}</p>
       <h3 class="h">代码</h3>
       <pre class="code">{{ detail.code }}</pre>
+
+      <div class="ai-block">
+        <div class="ai-head">
+          <h3 class="h mb0">AI 多维评测</h3>
+          <button type="button" class="btn-ai" :disabled="aiLoading" @click="loadAiEvaluation">
+            {{ aiLoading ? '加载中…' : '获取 AI 评价' }}
+          </button>
+        </div>
+        <p class="muted sm">基于本次提交的代码，向服务端请求 AI 多维分析（文档 6.3）。</p>
+        <p v-if="aiErr" class="err-msg">{{ aiErr }}</p>
+        <template v-else-if="aiEval">
+          <dl class="ai-dl">
+            <dt>时间复杂度</dt>
+            <dd>{{ aiEval.timeComplexity }}</dd>
+            <dt>空间复杂度</dt>
+            <dd>{{ aiEval.spaceComplexity }}</dd>
+            <dt>代码风格</dt>
+            <dd>{{ aiEval.codeStyle }}</dd>
+            <dt>可读性</dt>
+            <dd>{{ aiEval.readability }}</dd>
+            <dt>优化建议</dt>
+            <dd>{{ aiEval.optimization }}</dd>
+          </dl>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -132,5 +184,66 @@ h1 {
 }
 .err {
   color: var(--lc-red);
+}
+
+.ai-block {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--lc-border);
+}
+
+.ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mb0 {
+  margin-bottom: 0;
+}
+
+.btn-ai {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--lc-accent);
+  background: rgba(255, 161, 22, 0.12);
+  color: var(--lc-accent);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-ai:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.muted.sm {
+  font-size: 0.78rem;
+  margin: 6px 0 12px;
+}
+
+.ai-dl {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.ai-dl dt {
+  margin-top: 12px;
+  font-weight: 600;
+  color: var(--lc-text-muted);
+  font-size: 0.8rem;
+}
+
+.ai-dl dt:first-child {
+  margin-top: 0;
+}
+
+.ai-dl dd {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
 }
 </style>

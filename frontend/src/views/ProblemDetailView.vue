@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchProblemDetail, fetchProblemSolution } from '@/api/problem'
-import { judgeSubmit, type JudgeLanguageKey } from '@/api/judge'
-import type { JudgeResponse, ProblemDetail, ProblemSolution, SolutionItem } from '@/types/api'
-import { difficultyClass, difficultyLabel, formatAcceptRate, judgeVerdict } from '@/utils/format'
+import { judgeSubmit, type JudgeApiLanguage } from '@/api/judge'
+import type { JudgeSubmitResult, ProblemDetail, ProblemSolution, SolutionItem } from '@/types/api'
+import { difficultyClass, difficultyLabel, formatAcceptRate, verdictClass, verdictText } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
 const route = useRoute()
+const router = useRouter()
 
 const tab = ref<'desc' | 'solution'>('desc')
 const detail = ref<ProblemDetail | null>(null)
@@ -16,23 +17,38 @@ const loading = ref(true)
 const solLoading = ref(false)
 const err = ref('')
 
-const code = ref(`#include <iostream>
+const cppTemplate = `#include <iostream>
 using namespace std;
 
 int main() {
-    
+
     return 0;
 }
-`)
+`
 
-const customInput = ref('')
-const customAnswer = ref('')
-const judgeResult = ref<JudgeResponse | null>(null)
+const javaTemplate = `public class Main {
+    public static void main(String[] args) {
+
+    }
+}
+`
+
+const code = ref(cppTemplate)
+const judgeResult = ref<JudgeSubmitResult | null>(null)
+const submitApiMessage = ref('')
 const judging = ref(false)
 const judgeErr = ref('')
-const judgeLang = ref<JudgeLanguageKey>('cpp')
+const judgeLang = ref<JudgeApiLanguage>('C++')
 
 const problemId = computed(() => Number(props.id || route.params.id))
+
+watch(judgeLang, (lang) => {
+  if (lang === 'C++' && code.value.trim().startsWith('public class Main')) {
+    code.value = cppTemplate
+  } else if (lang === 'Java' && code.value.includes('#include')) {
+    code.value = javaTemplate
+  }
+})
 
 async function loadDetail() {
   loading.value = true
@@ -45,8 +61,6 @@ async function loadDetail() {
       return
     }
     detail.value = res.data
-    customInput.value = res.data?.sampleInput ?? ''
-    customAnswer.value = res.data?.sampleOutput ?? ''
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
   } finally {
@@ -84,6 +98,7 @@ watch(
     void loadDetail()
     solutions.value = []
     judgeResult.value = null
+    submitApiMessage.value = ''
   },
 )
 
@@ -91,59 +106,35 @@ onMounted(() => {
   void loadDetail()
 })
 
-function useSample() {
-  if (!detail.value) return
-  customInput.value = detail.value.sampleInput ?? ''
-  customAnswer.value = detail.value.sampleOutput ?? ''
-}
-
-async function runJudge() {
+/** 文档 5.2：提交代码并触发服务端全量用例评测（含运行与判题） */
+async function submitAndJudge() {
   if (!detail.value) return
   judging.value = true
   judgeErr.value = ''
   judgeResult.value = null
-  // #region agent log
-  fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
-    body: JSON.stringify({
-      sessionId: '69ddfc',
-      location: 'ProblemDetailView.vue:runJudge',
-      message: 'runJudge start',
-      data: { language: judgeLang.value, problemId: problemId.value },
-      timestamp: Date.now(),
-      hypothesisId: 'H3',
-    }),
-  }).catch(() => {})
-  // #endregion
+  submitApiMessage.value = ''
   try {
     const res = await judgeSubmit({
-      code: code.value,
-      input: customInput.value,
-      answer: customAnswer.value,
+      problemId: problemId.value,
       language: judgeLang.value,
+      code: code.value,
     })
-    judgeResult.value = res
+    submitApiMessage.value = res.message || ''
+    if (res.code !== 200 || !res.data) {
+      judgeErr.value = res.message || '提交失败'
+      return
+    }
+    judgeResult.value = res.data
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : '请求失败'
-    judgeErr.value = msg
-    // #region agent log
-    fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
-      body: JSON.stringify({
-        sessionId: '69ddfc',
-        location: 'ProblemDetailView.vue:runJudge',
-        message: 'runJudge error',
-        data: { err: msg },
-        timestamp: Date.now(),
-        hypothesisId: 'H2',
-      }),
-    }).catch(() => {})
-    // #endregion
+    judgeErr.value = e instanceof Error ? e.message : '请求失败'
   } finally {
     judging.value = false
   }
+}
+
+function goSubmissionDetail() {
+  if (!judgeResult.value?.submissionId) return
+  void router.push({ name: 'submission-detail', params: { id: String(judgeResult.value.submissionId) } })
 }
 </script>
 
@@ -210,42 +201,49 @@ async function runJudge() {
         <label class="lang-wrap">
           <span class="lang-label">语言</span>
           <select v-model="judgeLang" class="lang-select">
-            <option value="cpp">C++</option>
-            <option value="java">Java</option>
-            <option value="python">Python</option>
+            <option value="C++">C++</option>
+            <option value="Java">Java</option>
           </select>
         </label>
         <div class="actions">
-          <button type="button" class="btn-ghost" @click="useSample">填入样例</button>
-          <button type="button" class="btn-run" :disabled="judging" @click="runJudge">
-            {{ judging ? '评测中…' : '运行并评测' }}
+          <button type="button" class="btn-run" :disabled="judging" @click="submitAndJudge">
+            {{ judging ? '提交评测中…' : '提交并评测' }}
           </button>
         </div>
       </div>
+      <p class="hint sm">提交后由评测机在服务端运行代码，并对全部测试用例判题（文档 5.2）。</p>
       <textarea v-model="code" class="editor" spellcheck="false" />
 
       <div class="io-block">
-        <label>测试输入</label>
-        <textarea v-model="customInput" class="io" spellcheck="false" />
-        <label>期望输出</label>
-        <textarea v-model="customAnswer" class="io" spellcheck="false" />
+        <h4 class="io-title">题目样例（参考）</h4>
+        <p class="muted sm">样例与左侧描述一致，不参与本次请求；自测请在本地 IDE 运行。</p>
+        <label>样例输入</label>
+        <pre class="io ro">{{ detail.sampleInput }}</pre>
+        <label>样例输出</label>
+        <pre class="io ro">{{ detail.sampleOutput }}</pre>
       </div>
 
       <div class="verdict">
         <p v-if="judgeErr" class="judge-err">{{ judgeErr }}</p>
         <template v-else-if="judgeResult">
-          <div class="verdict-line" :class="{ ac: judgeResult.code === 0 }">
-            {{ judgeVerdict(judgeResult.code, judgeResult.status) }} — {{ judgeResult.message }}
+          <div class="verdict-line" :class="{ ac: judgeResult.result === 0 }">
+            <span class="verdict-pill" :class="verdictClass(judgeResult.result)">{{
+              verdictText(judgeResult.result)
+            }}</span>
+            <span v-if="submitApiMessage" class="muted sm"> — {{ submitApiMessage }}</span>
           </div>
-          <pre v-if="judgeResult.compileLog" class="log">{{ judgeResult.compileLog }}</pre>
-          <pre v-if="judgeResult.runtimeLog" class="log">{{ judgeResult.runtimeLog }}</pre>
-          <pre v-if="judgeResult.diffLog" class="log">{{ judgeResult.diffLog }}</pre>
-          <template v-if="judgeResult.userOutput">
-            <div class="muted sm" style="margin-top: 8px">用户输出</div>
-            <pre class="log sm">{{ judgeResult.userOutput }}</pre>
-          </template>
+          <p class="meta-line">
+            用例 {{ judgeResult.passCount }} / {{ judgeResult.totalCount }} · {{ judgeResult.runTime }} ms ·
+            {{ judgeResult.memory }} KB · {{ judgeResult.submitTime }}
+          </p>
+          <p v-if="judgeResult.errorMsg" class="err-msg">{{ judgeResult.errorMsg }}</p>
+          <div class="row-actions">
+            <button type="button" class="btn-link" @click="goSubmissionDetail">
+              查看提交详情 #{{ judgeResult.submissionId }}
+            </button>
+          </div>
         </template>
-        <p v-else class="muted hint">运行代码后在此查看评测结果。</p>
+        <p v-else class="muted hint">提交代码后在此查看评测摘要。</p>
       </div>
     </section>
   </div>
@@ -420,6 +418,11 @@ async function runJudge() {
   font-size: 0.75rem;
 }
 
+.hint.sm {
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
 .editor-head {
   display: flex;
   justify-content: space-between;
@@ -454,16 +457,6 @@ async function runJudge() {
   gap: 8px;
 }
 
-.btn-ghost {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--lc-border);
-  background: transparent;
-  color: var(--lc-text-muted);
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
 .btn-run {
   padding: 6px 16px;
   border-radius: 6px;
@@ -492,6 +485,17 @@ async function runJudge() {
   border-radius: 8px;
 }
 
+.io-block {
+  margin-top: 12px;
+}
+
+.io-title {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--lc-text-muted);
+}
+
 .io-block label {
   display: block;
   margin-top: 10px;
@@ -509,6 +513,13 @@ async function runJudge() {
   resize: vertical;
   background: #0d0d0d;
   border-radius: 8px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.io.ro {
+  border: 1px solid var(--lc-border);
 }
 
 .verdict {
@@ -526,25 +537,45 @@ async function runJudge() {
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--lc-red);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .verdict-line.ac {
   color: var(--lc-green);
 }
 
-.log {
+.verdict-pill {
+  font-weight: 700;
+}
+
+.meta-line {
   margin: 8px 0 0;
-  padding: 10px;
-  background: #0d0d0d;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  overflow: auto;
-  max-height: 200px;
+  font-size: 0.8rem;
+  color: var(--lc-text-muted);
+}
+
+.err-msg {
+  margin: 8px 0 0;
+  color: var(--lc-red);
+  font-size: 0.85rem;
   white-space: pre-wrap;
 }
 
-.log.sm {
-  max-height: 120px;
+.row-actions {
+  margin-top: 10px;
+}
+
+.btn-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--lc-accent);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
 }
 
 code {

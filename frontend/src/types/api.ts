@@ -65,16 +65,17 @@ export interface ProblemSolution {
   solution: SolutionItem[] | null
 }
 
-export interface JudgeResponse {
-  code: number
-  status: string
-  message: string
-  compileLog?: string
-  runtimeLog?: string
-  diffLog?: string
-  userOutput?: string
-  formattedAnswer?: string
-  formattedOutput?: string
+/** 文档 5.2.3：提交代码并触发评测的 data 字段 */
+export interface JudgeSubmitResult {
+  submissionId: number
+  runTime: number
+  memory: number
+  errorMsg: string
+  submitTime: string
+  /** 0 通过 1 编译错误 2 运行错误 3 超时 */
+  result: number
+  passCount: number
+  totalCount: number
 }
 
 export interface SubmissionListItem {
@@ -82,7 +83,10 @@ export interface SubmissionListItem {
   problemId: number
   problemTitle: string
   problemCategory: string
-  status: number
+  /** 文档 3.8 列表项字段 */
+  result?: number
+  /** 旧版字段，兼容未升级的后端 */
+  status?: number
   submitTime: string
 }
 
@@ -123,6 +127,17 @@ export interface CodeAnalysisResponse {
   plateCategory: string
   complexityAnalysis: string
   codeStyleAnalysis: string
+}
+
+/** 文档 6.3：AI 代码评价 */
+export interface AiEvaluationDetail {
+  evaluationId: number
+  submissionId: number
+  timeComplexity: string
+  spaceComplexity: string
+  codeStyle: string
+  readability: string
+  optimization: string
 }
 
 /** —— 管理员 /api/v1/admin —— */

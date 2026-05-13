@@ -5,6 +5,12 @@ import { fetchSubmissionList } from '@/api/user'
 import type { SubmissionListItem } from '@/types/api'
 import { verdictClass, verdictText } from '@/utils/format'
 
+function listResult(s: SubmissionListItem): number {
+  if (s.result !== undefined && s.result !== null) return s.result
+  if (s.status !== undefined && s.status !== null) return s.status
+  return -1
+}
+
 const router = useRouter()
 const list = ref<SubmissionListItem[]>([])
 const total = ref(0)
@@ -81,7 +87,7 @@ function applyFilter() {
         <tbody>
           <tr v-for="s in list" :key="s.submissionId" class="row" @click="open(s.submissionId)">
             <td>
-              <span class="verdict" :class="verdictClass(s.status)">{{ verdictText(s.status) }}</span>
+              <span class="verdict" :class="verdictClass(listResult(s))">{{ verdictText(listResult(s)) }}</span>
             </td>
             <td>#{{ s.problemId }} {{ s.problemTitle }}</td>
             <td class="muted">{{ s.problemCategory }}</td>
