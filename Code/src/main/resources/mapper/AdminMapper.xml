@@ -104,7 +104,20 @@
                 AND p.difficulty = #{difficulty}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+                AND (
+                    p.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.description LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.input_format LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.output_format LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.sample_input LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.sample_output LIKE CONCAT('%', #{keyword}, '%')
+                    OR EXISTS (
+                        SELECT 1 FROM problem_category pc_kw
+                        JOIN category c_kw ON pc_kw.category_id = c_kw.id
+                        WHERE pc_kw.problem_id = p.id
+                        AND c_kw.name LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                )
             </if>
             <if test="categoryNames != null and categoryNames.size > 0">
                 AND EXISTS (
@@ -128,7 +141,20 @@
                 AND p.difficulty = #{difficulty}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (p.title LIKE CONCAT('%', #{keyword}, '%') OR p.description LIKE CONCAT('%', #{keyword}, '%'))
+                AND (
+                    p.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.description LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.input_format LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.output_format LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.sample_input LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.sample_output LIKE CONCAT('%', #{keyword}, '%')
+                    OR EXISTS (
+                        SELECT 1 FROM problem_category pc_kw
+                        JOIN category c_kw ON pc_kw.category_id = c_kw.id
+                        WHERE pc_kw.problem_id = p.id
+                        AND c_kw.name LIKE CONCAT('%', #{keyword}, '%')
+                    )
+                )
             </if>
             <if test="categoryNames != null and categoryNames.size > 0">
                 AND EXISTS (

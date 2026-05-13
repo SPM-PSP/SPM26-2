@@ -1,7 +1,6 @@
 package com.itheim.program_platform_backend.domain.dto;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
@@ -15,7 +14,7 @@ public class JudgeRequest {
     @NotBlank(message = "标准答案不能为空")
     private String answer;
 
-    @NotNull(message = "编程语言不能为空")
+    @NotBlank(message = "编程语言不能为空")
     private String language;
 
     private Integer timeLimit;

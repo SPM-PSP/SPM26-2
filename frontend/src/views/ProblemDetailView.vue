@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchProblemDetail, fetchProblemSolution } from '@/api/problem'
-import { judgeCpp } from '@/api/judge'
+import { judgeSubmit, type JudgeLanguageKey } from '@/api/judge'
 import type { JudgeResponse, ProblemDetail, ProblemSolution, SolutionItem } from '@/types/api'
 import { difficultyClass, difficultyLabel, formatAcceptRate, judgeVerdict } from '@/utils/format'
 
@@ -30,6 +30,7 @@ const customAnswer = ref('')
 const judgeResult = ref<JudgeResponse | null>(null)
 const judging = ref(false)
 const judgeErr = ref('')
+const judgeLang = ref<JudgeLanguageKey>('cpp')
 
 const problemId = computed(() => Number(props.id || route.params.id))
 
@@ -95,23 +96,51 @@ function useSample() {
   customInput.value = detail.value.sampleInput ?? ''
   customAnswer.value = detail.value.sampleOutput ?? ''
 }
+
 async function runJudge() {
   if (!detail.value) return
   judging.value = true
   judgeErr.value = ''
   judgeResult.value = null
+  // #region agent log
+  fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
+    body: JSON.stringify({
+      sessionId: '69ddfc',
+      location: 'ProblemDetailView.vue:runJudge',
+      message: 'runJudge start',
+      data: { language: judgeLang.value, problemId: problemId.value },
+      timestamp: Date.now(),
+      hypothesisId: 'H3',
+    }),
+  }).catch(() => {})
+  // #endregion
   try {
-    const res = await judgeCpp({
+    const res = await judgeSubmit({
       code: code.value,
       input: customInput.value,
       answer: customAnswer.value,
-      language: 'cpp',
-      timeLimit: detail.value.timeLimit,
-      memoryLimit: String(detail.value.memoryLimit),
+      language: judgeLang.value,
     })
     judgeResult.value = res
   } catch (e: unknown) {
-    judgeErr.value = e instanceof Error ? e.message : '请求失败'
+    const msg = e instanceof Error ? e.message : '请求失败'
+    judgeErr.value = msg
+    // #region agent log
+    fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
+      body: JSON.stringify({
+        sessionId: '69ddfc',
+        location: 'ProblemDetailView.vue:runJudge',
+        message: 'runJudge error',
+        data: { err: msg },
+        timestamp: Date.now(),
+        hypothesisId: 'H2',
+      }),
+    }).catch(() => {})
+    // #endregion
   } finally {
     judging.value = false
   }
@@ -178,7 +207,14 @@ async function runJudge() {
 
     <section class="right card">
       <div class="editor-head">
-        <span class="lang">C++</span>
+        <label class="lang-wrap">
+          <span class="lang-label">语言</span>
+          <select v-model="judgeLang" class="lang-select">
+            <option value="cpp">C++</option>
+            <option value="java">Java</option>
+            <option value="python">Python</option>
+          </select>
+        </label>
         <div class="actions">
           <button type="button" class="btn-ghost" @click="useSample">填入样例</button>
           <button type="button" class="btn-run" :disabled="judging" @click="runJudge">
@@ -391,9 +427,26 @@ async function runJudge() {
   margin-bottom: 8px;
 }
 
-.lang {
+.lang-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.8rem;
   color: var(--lc-text-muted);
+}
+
+.lang-label {
+  white-space: nowrap;
+}
+
+.lang-select {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-surface-2);
+  color: var(--lc-text);
+  font-size: 0.8rem;
+  cursor: pointer;
 }
 
 .actions {
