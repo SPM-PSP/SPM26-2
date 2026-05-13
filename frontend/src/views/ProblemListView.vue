@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchCategories, fetchProblemList, type ProblemListParams } from '@/api/problem'
 import { useAuthStore } from '@/stores/auth'
@@ -10,6 +10,8 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const categories = ref<CategoryVO[]>([])
+const catsLoading = ref(true)
+const catsErr = ref('')
 const list = ref<ProblemListItem[]>([])
 const total = ref(0)
 const pages = ref(0)
@@ -22,12 +24,32 @@ const difficulty = ref('')
 const status = ref<number | ''>('')
 const selectedCats = ref<string[]>([])
 
+let keywordDebounce: ReturnType<typeof setTimeout> | undefined
+
+watch(keyword, () => {
+  if (keywordDebounce) clearTimeout(keywordDebounce)
+  keywordDebounce = setTimeout(() => {
+    currentPage.value = 1
+    void load()
+  }, 380)
+})
+
 async function loadCats() {
+  catsLoading.value = true
+  catsErr.value = ''
   try {
     const res = await fetchCategories()
-    if (res.code === 200) categories.value = res.data ?? []
-  } catch {
-    /* ignore */
+    if (res.code === 200) {
+      categories.value = res.data ?? []
+    } else {
+      catsErr.value = res.message || '分类加载失败'
+      categories.value = []
+    }
+  } catch (e: unknown) {
+    catsErr.value = e instanceof Error ? e.message : '分类加载失败'
+    categories.value = []
+  } finally {
+    catsLoading.value = false
   }
 }
 
@@ -53,6 +75,24 @@ async function load() {
     total.value = Number(d?.total ?? 0)
     pages.value = Number(d?.pages ?? 0)
     currentPage.value = Number(d?.currentPage ?? 1)
+    // #region agent log
+    fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
+      body: JSON.stringify({
+        sessionId: '69ddfc',
+        location: 'ProblemListView.vue:load',
+        message: 'problem list loaded',
+        data: {
+          total: total.value,
+          keywordLen: keyword.value.length,
+          catFilters: selectedCats.value.length,
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'H4',
+      }),
+    }).catch(() => {})
+    // #endregion
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
   } finally {
@@ -68,6 +108,11 @@ function toggleCat(name: string) {
 
 function onTagClick(name: string) {
   toggleCat(name)
+  search()
+}
+
+function clearCats() {
+  selectedCats.value = []
   search()
 }
 
@@ -94,7 +139,13 @@ function search() {
     </div>
 
     <div class="toolbar card">
-      <input v-model="keyword" class="grow" type="search" placeholder="搜索题目…" @keyup.enter="search" />
+      <input
+        v-model="keyword"
+        class="grow"
+        type="search"
+        placeholder="标题、描述、格式、样例或分类名…"
+        @keyup.enter="search"
+      />
       <select v-model="difficulty" @change="search">
         <option value="">全部难度</option>
         <option value="easy">简单</option>
@@ -109,8 +160,10 @@ function search() {
       <button type="button" class="btn-accent" @click="search">搜索</button>
     </div>
 
-    <div v-if="categories.length" class="tags card">
-      <span class="tags-label">分类</span>
+    <div v-if="catsLoading" class="tags card muted-row">正在加载分类…</div>
+    <div v-else-if="catsErr" class="tags card err">{{ catsErr }}</div>
+    <div v-else-if="categories.length" class="tags card">
+      <span class="tags-label">分类（来自题库）</span>
       <button
         v-for="c in categories"
         :key="c.categoryId"
@@ -121,7 +174,9 @@ function search() {
       >
         {{ c.categoryName }}
       </button>
+      <button v-if="selectedCats.length" type="button" class="tag-clear" @click="clearCats">清空已选</button>
     </div>
+    <div v-else class="tags card muted-row">暂无分类，请管理员在后台维护后刷新。</div>
 
     <p v-if="err" class="err">{{ err }}</p>
 
@@ -244,10 +299,25 @@ function search() {
   cursor: pointer;
 }
 
-.tag.on {
+.tag-clear {
+  margin-left: auto;
+  border: 1px dashed var(--lc-border);
+  background: transparent;
+  color: var(--lc-text-muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tag-clear:hover {
   border-color: var(--lc-accent);
   color: var(--lc-accent);
-  background: rgba(255, 161, 22, 0.08);
+}
+
+.muted-row {
+  color: var(--lc-text-muted);
+  font-size: 0.85rem;
 }
 
 .err {

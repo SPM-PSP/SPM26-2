@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -25,7 +26,8 @@ public class JudgeServiceImpl implements JudgeService {
     @Override
     public JudgeResponse judge(JudgeRequest request) {
         log.info("========== 开始判题 ==========");
-        log.info("语言: {}", request.getLanguage());
+        String languageKey = resolveLanguageKey(request.getLanguage());
+        log.info("语言: {} (resolved: {})", request.getLanguage(), languageKey);
         log.info("代码长度: {} 字符", request.getCode() != null ? request.getCode().length() : 0);
         log.info("输入: {}", request.getInput());
         log.info("答案: {}", request.getAnswer());
@@ -36,11 +38,10 @@ public class JudgeServiceImpl implements JudgeService {
         }
         log.info("Docker 服务正常");
 
-        String language = request.getLanguage().toLowerCase();
-        JudgeConfig.LanguageConfig langConfig = judgeConfig.getLanguages().get(language);
+        JudgeConfig.LanguageConfig langConfig = judgeConfig.getLanguages().get(languageKey);
 
         if (langConfig == null) {
-            log.error("不支持的语言: {}", request.getLanguage());
+            log.error("不支持的语言: {} (key={})", request.getLanguage(), languageKey);
             throw new JudgeException("不支持的编程语言: " + request.getLanguage());
         }
         log.info("语言配置: image={}, script={}, sourceFile={}",
@@ -48,7 +49,7 @@ public class JudgeServiceImpl implements JudgeService {
                 langConfig.getScriptFile(),
                 langConfig.getSourceFileName());
 
-        validateAndNormalizeCode(request);
+        validateAndNormalizeCode(request, languageKey);
 
         String taskId = UUID.randomUUID().toString();
         String taskRoot = judgeConfig.getTempTaskRoot() + taskId + "/";
@@ -186,16 +187,34 @@ public class JudgeServiceImpl implements JudgeService {
         }
     }
 
-    private void validateAndNormalizeCode(JudgeRequest request) {
+    /**
+     * 将前端/文档中的语言写法映射为 application.yml 中的 key（cpp / java / python）。
+     */
+    private String resolveLanguageKey(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "cpp";
+        }
+        String s = raw.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
+        if ("c++".equals(s) || "cpp".equals(s) || "cxx".equals(s) || "cplusplus".equals(s)) {
+            return "cpp";
+        }
+        if ("java".equals(s)) {
+            return "java";
+        }
+        if ("python".equals(s) || "py".equals(s) || "python3".equals(s)) {
+            return "python";
+        }
+        return s;
+    }
+
+    private void validateAndNormalizeCode(JudgeRequest request, String languageKey) {
         String code = request.getCode();
 
         if (code == null || code.trim().isEmpty()) {
             throw new JudgeException("代码不能为空");
         }
 
-        String language = request.getLanguage().toLowerCase();
-
-        switch (language) {
+        switch (languageKey) {
             case "cpp":
                 if (!code.contains("#include") && !code.contains("main")) {
                     log.warn("C++ 代码可能不完整");
@@ -215,7 +234,7 @@ public class JudgeServiceImpl implements JudgeService {
                 }
                 break;
             default:
-                throw new JudgeException("不支持的语言: " + language);
+                throw new JudgeException("不支持的语言: " + languageKey);
         }
 
         log.debug("代码验证通过，长度: {} 字符", code.length());
