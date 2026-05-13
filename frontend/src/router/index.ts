@@ -34,6 +34,31 @@ const router = createRouter({
     { path: '/ai', name: 'ai-lab', component: () => import('@/views/AiLabView.vue') },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
+    {
+      path: '/admin',
+      component: () => import('@/views/admin/AdminLayout.vue'),
+      meta: { requiresAdmin: true },
+      children: [
+        { path: '', redirect: { name: 'admin-users' } },
+        { path: 'users', name: 'admin-users', component: () => import('@/views/admin/AdminUsersView.vue') },
+        {
+          path: 'categories',
+          name: 'admin-categories',
+          component: () => import('@/views/admin/AdminCategoriesView.vue'),
+        },
+        { path: 'problems', name: 'admin-problems', component: () => import('@/views/admin/AdminProblemsView.vue') },
+        {
+          path: 'problems/new',
+          name: 'admin-problem-new',
+          component: () => import('@/views/admin/AdminProblemEditView.vue'),
+        },
+        {
+          path: 'problems/:id',
+          name: 'admin-problem-edit',
+          component: () => import('@/views/admin/AdminProblemEditView.vue'),
+        },
+      ],
+    },
   ],
 })
 
@@ -41,6 +66,14 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   if ((to.name === 'login' || to.name === 'register') && auth.isLoggedIn) {
     return { path: '/problems' }
+  }
+  if (to.meta.requiresAdmin) {
+    if (!auth.isLoggedIn) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+    if (!auth.isAdmin) {
+      return { path: '/problems' }
+    }
   }
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }

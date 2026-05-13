@@ -20,6 +20,7 @@ function logout() {
         <nav class="links">
           <RouterLink to="/problems" class="nav-link">题库</RouterLink>
           <RouterLink v-if="auth.isLoggedIn" to="/submissions" class="nav-link">提交记录</RouterLink>
+          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link">管理后台</RouterLink>
           <RouterLink to="/ai" class="nav-link">AI 实验室</RouterLink>
         </nav>
         <div class="nav-right">

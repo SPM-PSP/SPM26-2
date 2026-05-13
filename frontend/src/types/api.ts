@@ -124,3 +124,66 @@ export interface CodeAnalysisResponse {
   complexityAnalysis: string
   codeStyleAnalysis: string
 }
+
+/** —— 管理员 /api/v1/admin —— */
+
+export interface AdminUserListItem {
+  id: number
+  username: string
+  email: string
+  nickname: string
+  avatar: string
+  phone: string
+  createTime: string
+}
+
+export interface AdminProblemListItem {
+  problemId: number
+  title: string
+  difficulty: string
+  categoryNames: string[]
+  acceptRate: number | string
+}
+
+export interface AdminTestCaseItem {
+  caseId: number
+  inputUrl: string
+  outputUrl: string
+  createTime: string
+}
+
+export interface AdminProblemDetail {
+  problemId: number
+  title: string
+  difficulty: string
+  categoryNames: string[]
+  description: string
+  inputFormat: string
+  outputFormat: string
+  sampleInput: string
+  sampleOutput: string
+  timeLimit: number
+  memoryLimit: number
+  acceptRate: number | string
+  testCases: AdminTestCaseItem[]
+}
+
+export interface AdminTestCaseAddResult {
+  caseId: number
+  createTime: string
+  inputUrl: string
+  inputSize: number
+  inputType: string
+  outputUrl: string
+  outputSize: number
+  outputType: string
+}
+
+export interface AdminTestCaseFileResult {
+  inputUrl: string
+  inputSize: number
+  inputType: string
+  outputUrl: string
+  outputSize: number
+  outputType: string
+}

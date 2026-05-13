@@ -18,6 +18,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value)
 
+  const isAdmin = computed(() => userPreview.value?.role === 'admin')
+
   function setSession(payload: LoginVO) {
     token.value = payload.token
     localStorage.setItem(TOKEN_KEY, payload.token)
@@ -38,5 +40,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_KEY)
   }
 
-  return { token, userPreview, isLoggedIn, setSession, clear }
+  return { token, userPreview, isLoggedIn, isAdmin, setSession, clear }
 })

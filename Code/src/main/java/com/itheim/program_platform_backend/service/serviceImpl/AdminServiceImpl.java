@@ -191,7 +191,14 @@ public class AdminServiceImpl implements AdminService {
 
         List<ProblemTestCase> testCases = adminMapper.selectProblemTestCasesByProblemId(problemId);
         List<AdminTestCaseVO> caseVOs = testCases.stream()
-                .map(c -> new AdminTestCaseVO(c.getInputUrl(), c.getOutputUrl(), c.getCreateTime()))
+                .map(c -> {
+                    AdminTestCaseVO v = new AdminTestCaseVO();
+                    v.setCaseId(c.getId());
+                    v.setInputUrl(c.getInputUrl());
+                    v.setOutputUrl(c.getOutputUrl());
+                    v.setCreateTime(c.getCreateTime());
+                    return v;
+                })
                 .collect(Collectors.toList());
         vo.setTestCases(caseVOs);
         return vo;
