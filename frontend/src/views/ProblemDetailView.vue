@@ -95,7 +95,6 @@ function useSample() {
   customInput.value = detail.value.sampleInput ?? ''
   customAnswer.value = detail.value.sampleOutput ?? ''
 }
-
 async function runJudge() {
   if (!detail.value) return
   judging.value = true
@@ -106,6 +105,9 @@ async function runJudge() {
       code: code.value,
       input: customInput.value,
       answer: customAnswer.value,
+      language: 'cpp',
+      timeLimit: detail.value.timeLimit,
+      memoryLimit: String(detail.value.memoryLimit),
     })
     judgeResult.value = res
   } catch (e: unknown) {
