@@ -17,6 +17,7 @@ import com.itheim.program_platform_backend.mapper.UserStatisticsMapper;
 import com.itheim.program_platform_backend.service.AuthService;
 import com.itheim.program_platform_backend.utils.AliyunOSSOperator;
 import com.itheim.program_platform_backend.utils.JwtUtil;
+import com.itheim.program_platform_backend.utils.UserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,15 +62,22 @@ public class AuthServiceImpl implements AuthService {
         if (existingUser != null) {
             throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "该用户名已被注册，请更换");
         }
+        //校验邮箱是否已存在
+        if (userDTO.getEmail() != null && !userDTO.getEmail().isEmpty()) {
+            existingUser = authMapper.findByEmail(userDTO.getEmail());
+            if (existingUser != null) {
+                throw new BusinessException(CommonResultCode.BUSINESS_ERROR, "该邮箱已被注册，请更换");
+            }
+        }
         log.info("用户注册：{}", userDTO);
         User user = new User();
         BeanUtils.copyProperties(userDTO, user);
 
-        
+
         // BCrypt加密密码
         String encodedPassword = passwordEncoder.encode(userDTO.getPassword());
         user.setPassword(encodedPassword);
-        
+
         user.setCreateTime(LocalDateTime.now());
         user.setUpdateTime(LocalDateTime.now());
         authMapper.addUser(user);
@@ -79,6 +87,7 @@ public class AuthServiceImpl implements AuthService {
     /*
     *  用户登录
     * */
+    //TODO用户登录可以通过用户名或邮箱
     @Override
     public LoginVO login(RegisterUserDTO userDTO) {
         if (userDTO == null){
@@ -265,7 +274,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 查询用户统计信息
         UserStatistics userStatistics = userStatisticsMapper.selectByUserId(userId);
-        
+
         // 如果用户统计记录不存在，创建默认记录
         if (userStatistics == null) {
             userStatistics = new UserStatistics();
@@ -274,7 +283,7 @@ public class AuthServiceImpl implements AuthService {
             userStatistics.setTotalAccept(0);
             userStatistics.setCreateTime(LocalDateTime.now());
             userStatistics.setUpdateTime(LocalDateTime.now());
-            
+
             userStatisticsMapper.insert(userStatistics);
         }
 
@@ -282,6 +291,14 @@ public class AuthServiceImpl implements AuthService {
                 .totalSubmit(userStatistics.getTotalSubmit())
                 .totalAccept(userStatistics.getTotalAccept())
                 .build();
+    }
+
+    @Override
+    public void logout() {
+        // 退出登录后，销毁token
+        long userId = UserContext.getCurrentUserId();
+        authMapper.deleteUserTokenByUserId(userId);
+        UserContext.clear();
     }
 
 

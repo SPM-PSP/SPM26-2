@@ -15,7 +15,7 @@ public interface AuthMapper {
 
     @Delete("delete from user_token where user_id = #{id}")
     void deleteUserTokenByUserId(Long id);
-    
+
     @Insert("INSERT INTO user_token(user_id, token, expire_time, create_time, update_time) " +
             "VALUES(#{userId}, #{token}, #{expireTime}, #{createTime}, #{updateTime})")
     void saveUserToken(UserToken userToken);
@@ -34,4 +34,7 @@ public interface AuthMapper {
 
     @Update("UPDATE user SET password = #{password}, update_time = NOW() WHERE id = #{id}")
     void updatePasswordById(@Param("id") Long id, @Param("password") String password);
+
+    @Select("SELECT * FROM user WHERE email = #{email}")
+    User findByEmail(String email);
 }
