@@ -4,20 +4,38 @@ import com.itheim.program_platform_backend.domain.dto.CodeAnalysisRequest;
 import com.itheim.program_platform_backend.domain.dto.CodeAnalysisResponse;
 import com.itheim.program_platform_backend.domain.dto.ProblemGenerateRequest;
 import com.itheim.program_platform_backend.domain.dto.ProblemGenerateResponse;
+import com.itheim.program_platform_backend.domain.po.Problem;
+import com.itheim.program_platform_backend.domain.po.ProblemTestCase;
+import com.itheim.program_platform_backend.exception.BusinessException;
+import com.itheim.program_platform_backend.mapper.AdminMapper;
 import com.itheim.program_platform_backend.service.AlgorithmService;
 import com.itheim.program_platform_backend.utils.VolcLlmUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AlgorithmServiceImpl implements AlgorithmService {
     private final VolcLlmUtil volcLlmUtil;
+    private final AdminMapper adminMapper;
+
+    @Value("${file-storage.test-case-root}")
+    private String testCaseRoot;
 
     @Override
     public CodeAnalysisResponse analyzeCode(CodeAnalysisRequest request) {
@@ -88,7 +106,129 @@ public class AlgorithmServiceImpl implements AlgorithmService {
         response.setInputFormat(extractField(llmResponse, "【输入格式】："));
         response.setOutputFormat(extractField(llmResponse, "【输出格式】："));
 
+        // 保存题目和测试用例到数据库
+        saveProblemAndTestCases(response, request);
+
         return response;
+    }
+
+    /**
+     * 将AI生成的题目和测试用例保存到数据库
+     */
+    @Transactional
+    public void saveProblemAndTestCases(ProblemGenerateResponse response, ProblemGenerateRequest request) {
+        // 1. 创建题目实体
+        Problem problem = new Problem();
+        problem.setTitle(response.getProblemName());
+        problem.setDifficulty(request.getDifficulty());
+        problem.setDescription(response.getProblemDesc());
+        problem.setInputFormat(response.getInputFormat());
+        problem.setOutputFormat(response.getOutputFormat());
+        // 将多个样例合并为一个字符串
+        problem.setSampleInput(String.join("\n---\n", response.getSampleInput()));
+        problem.setSampleOutput(String.join("\n---\n", response.getSampleOutput()));
+        problem.setTimeLimit(5000); // 默认5秒
+        problem.setMemoryLimit(256 * 1024); // 默认256MB
+        problem.setPassRate(BigDecimal.ZERO);
+        problem.setCreateTime(LocalDateTime.now());
+        problem.setUpdateTime(LocalDateTime.now());
+
+        // 2. 插入题目
+        int rows = adminMapper.insertProblem(problem);
+        if (rows == 0) {
+            throw new BusinessException(500, "保存题目失败");
+        }
+        Long problemId = problem.getId();
+        log.info("题目保存成功，ID: {}", problemId);
+
+        // 3. 保存测试用例
+        List<String> sampleInputs = response.getSampleInput();
+        List<String> sampleOutputs = response.getSampleOutput();
+
+        for (int i = 0; i < sampleInputs.size() && i < sampleOutputs.size(); i++) {
+            saveTestCase(problemId, sampleInputs.get(i), sampleOutputs.get(i));
+        }
+        log.info("测试用例保存成功，题目ID: {}，数量: {}", problemId, sampleInputs.size());
+
+        // 4. 添加默认分类（根据请求中的板块）
+        String categoryName = request.getPlate();
+        if (categoryName != null && !categoryName.isEmpty()) {
+            addProblemCategory(problemId, categoryName);
+        }
+    }
+
+    /**
+     * 保存单个测试用例
+     */
+    private void saveTestCase(Long problemId, String inputContent, String outputContent) {
+        // 生成文件名并保存
+        String inputFileName = UUID.randomUUID() + ".in";
+        String outputFileName = UUID.randomUUID() + ".out";
+        String inputRelativePath = "problem-" + problemId + "/" + inputFileName;
+        String outputRelativePath = "problem-" + problemId + "/" + outputFileName;
+
+        try {
+            // 确保目录存在
+            Path inputPath = resolveSafePath(inputRelativePath);
+            Path outputPath = resolveSafePath(outputRelativePath);
+            Files.createDirectories(inputPath.getParent());
+
+            // 写入文件内容
+            Files.writeString(inputPath, inputContent, StandardCharsets.UTF_8);
+            Files.writeString(outputPath, outputContent, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("保存测试用例文件失败", e);
+            throw new BusinessException(500, "保存测试用例文件失败");
+        }
+
+        // 插入数据库记录
+        ProblemTestCase testCase = new ProblemTestCase();
+        testCase.setProblemId(problemId);
+        testCase.setInputUrl(inputRelativePath);
+        testCase.setOutputUrl(outputRelativePath);
+        testCase.setCreateTime(LocalDateTime.now());
+        testCase.setUpdateTime(LocalDateTime.now());
+
+        int rows = adminMapper.insertProblemTestCase(testCase);
+        if (rows == 0) {
+            throw new BusinessException(500, "保存测试用例记录失败");
+        }
+    }
+
+    /**
+     * 为题目添加分类
+     */
+    private void addProblemCategory(Long problemId, String categoryName) {
+        // 尝试查找分类
+        Long categoryId = adminMapper.selectCategoryIdByName(categoryName);
+
+        // 如果分类不存在，创建新分类
+        if (categoryId == null) {
+            LocalDateTime now = LocalDateTime.now();
+            int rows = adminMapper.insertCategory(categoryName, now, now);
+            if (rows == 0) {
+                log.warn("创建分类失败: {}", categoryName);
+                return;
+            }
+            categoryId = adminMapper.selectCategoryIdByName(categoryName);
+        }
+
+        // 添加题目分类关联
+        if (categoryId != null) {
+            adminMapper.insertProblemCategory(problemId, categoryId, LocalDateTime.now());
+        }
+    }
+
+    /**
+     * 安全解析文件路径
+     */
+    private Path resolveSafePath(String relativePath) {
+        Path rootPath = Paths.get(testCaseRoot).toAbsolutePath().normalize();
+        Path resolved = rootPath.resolve(relativePath).normalize();
+        if (!resolved.startsWith(rootPath)) {
+            throw new BusinessException(400, "文件路径异常");
+        }
+        return resolved;
     }
 
     private String extractField(String content, String fieldName) {

@@ -41,7 +41,6 @@ public class ProblemController {
     public Result<List<CategoryVO>> getCategoryList() {
         return Result.success(problemService.getCategoryList());
     }
-
     /**
      * 4.3 获取题库题目列表
      */
