@@ -1,8 +1,8 @@
 import http from './http'
 import type { ApiResult, JudgeSubmitResult } from '@/types/api'
 
-/** 与接口文档 5.2 一致：C++、Java */
-export type JudgeApiLanguage = 'C++' | 'Java'
+/** 与接口文档 5.2 一致：C++、Java、Python */
+export type JudgeApiLanguage = 'C++' | 'Java' | 'Python'
 
 export interface JudgeSubmitBody {
   problemId: number

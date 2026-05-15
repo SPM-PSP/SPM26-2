@@ -182,12 +182,15 @@ async function submitAndJudge() {
       language: judgeLang.value,
       code: code.value,
     })
-    submitApiMessage.value = res.message || ''
+
+    // 后端现在直接返回 JudgeSubmitResult 格式的数据
     if (res.code !== 200 || !res.data) {
       judgeErr.value = res.message || '提交失败'
       return
     }
+
     judgeResult.value = res.data
+    submitApiMessage.value = '提交成功'
   } catch (e: unknown) {
     judgeErr.value = e instanceof Error ? e.message : '请求失败'
   } finally {

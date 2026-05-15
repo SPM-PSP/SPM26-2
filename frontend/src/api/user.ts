@@ -31,14 +31,14 @@ export async function fetchSubmissionList(params: SubmissionListParams) {
   if (params.sortOrder) sp.set('sortOrder', params.sortOrder)
   appendRepeated('problemCategory', params.problemCategory, sp)
   const { data } = await http.get<ApiResult<PageResult<SubmissionListItem>>>(
-    `/api/v1/user/submission/list?${sp.toString()}`,
+      `/api/v1/user/submission/list?${sp.toString()}`,
   )
   return data
 }
 
 export async function fetchSubmissionDetail(submissionId: number) {
   const { data } = await http.get<ApiResult<SubmissionDetail>>(
-    `/api/v1/user/study/statistics/detail/${submissionId}`,
+      `/api/v1/user/detail/${submissionId}`,
   )
   return data
 }
