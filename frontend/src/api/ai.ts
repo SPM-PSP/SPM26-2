@@ -1,10 +1,16 @@
 import http from './http'
-import type { AiEvaluationDetail, ApiResult } from '@/types/api'
+import type { ApiResult, CodeAnalysisResponse } from '@/types/api'
 
-/** 文档 6.3：获取指定提交的 AI 多维评价 */
-export async function fetchAiEvaluation(submissionId: number) {
-  const { data } = await http.get<ApiResult<AiEvaluationDetail>>(
-    `/api/v1/ai/evaluation/${submissionId}`,
+export interface CodeAnalysisRequest {
+  code: string
+  language: string
+}
+
+/** 调用后端已有的代码分析接口 */
+export async function analyzeCode(request: CodeAnalysisRequest) {
+  const { data } = await http.post<CodeAnalysisResponse>(
+      '/api/algorithm/analyze-code',
+      request,
   )
   return data
 }

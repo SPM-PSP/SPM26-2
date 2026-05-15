@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchAiEvaluation } from '@/api/ai'
+import { analyzeCode } from '@/api/ai'
 import { fetchSubmissionDetail } from '@/api/user'
-import type { AiEvaluationDetail, SubmissionDetail } from '@/types/api'
+import type { CodeAnalysisResponse, SubmissionDetail } from '@/types/api'
 import { verdictClass, verdictText } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
@@ -12,7 +12,7 @@ const detail = ref<SubmissionDetail | null>(null)
 const loading = ref(true)
 const err = ref('')
 
-const aiEval = ref<AiEvaluationDetail | null>(null)
+const aiEval = ref<CodeAnalysisResponse | null>(null)
 const aiLoading = ref(false)
 const aiErr = ref('')
 
@@ -37,18 +37,27 @@ async function load() {
 }
 
 async function loadAiEvaluation() {
-  const id = Number(props.id)
-  if (!Number.isFinite(id)) return
+  if (!detail.value) {
+    aiErr.value = '请先加载提交详情'
+    return
+  }
+
   aiLoading.value = true
   aiErr.value = ''
   aiEval.value = null
+
   try {
-    const res = await fetchAiEvaluation(id)
-    if (res.code !== 200 || !res.data) {
-      aiErr.value = res.message || '暂无 AI 评测'
+    const res = await analyzeCode({
+      code: detail.value.code,
+      language: detail.value.language,
+    })
+
+    if (!res) {
+      aiErr.value = 'AI 分析失败'
       return
     }
-    aiEval.value = res.data
+
+    aiEval.value = res
   } catch (e: unknown) {
     aiErr.value = e instanceof Error ? e.message : '请求失败'
   } finally {
@@ -57,10 +66,10 @@ async function loadAiEvaluation() {
 }
 
 watch(
-  () => props.id,
-  () => {
-    void load()
-  },
+    () => props.id,
+    () => {
+      void load()
+    },
 )
 
 onMounted(() => {
@@ -92,23 +101,19 @@ onMounted(() => {
         <div class="ai-head">
           <h3 class="h mb0">AI 多维评测</h3>
           <button type="button" class="btn-ai" :disabled="aiLoading" @click="loadAiEvaluation">
-            {{ aiLoading ? '加载中…' : '获取 AI 评价' }}
+            {{ aiLoading ? '分析中…' : '获取 AI 评价' }}
           </button>
         </div>
-        <p class="muted sm">基于本次提交的代码，向服务端请求 AI 多维分析（文档 6.3）。</p>
+        <p class="muted sm">基于本次提交的代码，向服务端请求 AI 多维分析。</p>
         <p v-if="aiErr" class="err-msg">{{ aiErr }}</p>
         <template v-else-if="aiEval">
           <dl class="ai-dl">
-            <dt>时间复杂度</dt>
-            <dd>{{ aiEval.timeComplexity }}</dd>
-            <dt>空间复杂度</dt>
-            <dd>{{ aiEval.spaceComplexity }}</dd>
+            <dt>算法分类</dt>
+            <dd>{{ aiEval.plateCategory }}</dd>
+            <dt>复杂度分析</dt>
+            <dd>{{ aiEval.complexityAnalysis }}</dd>
             <dt>代码风格</dt>
-            <dd>{{ aiEval.codeStyle }}</dd>
-            <dt>可读性</dt>
-            <dd>{{ aiEval.readability }}</dd>
-            <dt>优化建议</dt>
-            <dd>{{ aiEval.optimization }}</dd>
+            <dd>{{ aiEval.codeStyleAnalysis }}</dd>
           </dl>
         </template>
       </div>

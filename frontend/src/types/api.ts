@@ -129,7 +129,6 @@ export interface CodeAnalysisResponse {
   codeStyleAnalysis: string
 }
 
-/** 文档 6.3：AI 代码评价 */
 export interface AiEvaluationDetail {
   evaluationId: number
   submissionId: number
