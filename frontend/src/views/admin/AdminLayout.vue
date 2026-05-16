@@ -1,32 +1,67 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
+import PageBack from '@/components/PageBack.vue'
+
+const keepAliveNames = ['AdminUsersView', 'AdminCategoriesView', 'AdminProblemsView']
 </script>
 
 <template>
-  <div class="admin">
-    <aside class="side">
-      <h2 class="side-title">管理后台</h2>
-      <nav class="nav">
-        <RouterLink class="item" to="/admin/users" active-class="on">用户</RouterLink>
-        <RouterLink class="item" to="/admin/categories" active-class="on">题目分类</RouterLink>
-        <RouterLink class="item" to="/admin/problems" active-class="on">题库</RouterLink>
-      </nav>
-      <RouterLink class="back" to="/problems">返回前台</RouterLink>
-    </aside>
-    <div class="content">
-      <RouterView />
+  <div class="admin-shell">
+    <header class="admin-top">
+      <PageBack label="返回前台" to="/problems" />
+      <span class="admin-badge">管理后台</span>
+    </header>
+    <div class="admin">
+      <aside class="side">
+        <h2 class="side-title">功能菜单</h2>
+        <nav class="nav">
+          <RouterLink class="item" :to="{ name: 'admin-users' }">用户管理</RouterLink>
+          <RouterLink class="item" :to="{ name: 'admin-categories' }">题目分类</RouterLink>
+          <RouterLink class="item" :to="{ name: 'admin-problems' }">题库管理</RouterLink>
+        </nav>
+      </aside>
+      <div class="content">
+        <RouterView v-slot="{ Component }">
+          <KeepAlive :include="keepAliveNames">
+            <component :is="Component" v-if="Component" />
+          </KeepAlive>
+        </RouterView>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.admin-shell {
+  min-height: 100vh;
+  background: var(--lc-bg);
+  padding: 16px 20px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.admin-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--lc-accent);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 161, 22, 0.12);
+  border: 1px solid rgba(255, 161, 22, 0.35);
+}
+
 .admin {
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 20px;
   align-items: start;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 @media (max-width: 720px) {
@@ -40,6 +75,8 @@ import { RouterLink, RouterView } from 'vue-router'
   border: 1px solid var(--lc-border);
   border-radius: 10px;
   padding: 16px;
+  position: sticky;
+  top: 16px;
 }
 
 .side-title {
@@ -66,22 +103,10 @@ import { RouterLink, RouterView } from 'vue-router'
   background: var(--lc-surface-2);
 }
 
-.item.on {
+.item.router-link-active {
   color: var(--lc-accent);
   background: rgba(255, 161, 22, 0.08);
-}
-
-.back {
-  display: block;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--lc-border);
-  font-size: 0.82rem;
-  color: var(--lc-text-muted);
-}
-
-.back:hover {
-  color: var(--lc-accent);
+  font-weight: 600;
 }
 
 .content {

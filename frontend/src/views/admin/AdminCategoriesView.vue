@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+
+defineOptions({ name: 'AdminCategoriesView' })
 import { fetchCategories } from '@/api/problem'
 import { adminAddCategory, adminDeleteCategory } from '@/api/admin'
 import type { CategoryVO } from '@/types/api'

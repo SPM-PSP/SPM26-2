@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+
+defineOptions({ name: 'ProblemListView' })
 import { useRouter } from 'vue-router'
 import { fetchCategories, fetchProblemList, type ProblemListParams } from '@/api/problem'
 import { useAuthStore } from '@/stores/auth'
@@ -31,7 +33,12 @@ watch(keyword, () => {
   keywordDebounce = setTimeout(() => {
     currentPage.value = 1
     void load()
-  }, 380)
+  }, 400)
+})
+
+watch([difficulty, status], () => {
+  currentPage.value = 1
+  void load()
 })
 
 async function loadCats() {
@@ -75,24 +82,6 @@ async function load() {
     total.value = Number(d?.total ?? 0)
     pages.value = Number(d?.pages ?? 0)
     currentPage.value = Number(d?.currentPage ?? 1)
-    // #region agent log
-    fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
-      body: JSON.stringify({
-        sessionId: '69ddfc',
-        location: 'ProblemListView.vue:load',
-        message: 'problem list loaded',
-        data: {
-          total: total.value,
-          keywordLen: keyword.value.length,
-          catFilters: selectedCats.value.length,
-        },
-        timestamp: Date.now(),
-        hypothesisId: 'H4',
-      }),
-    }).catch(() => {})
-    // #endregion
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
   } finally {
@@ -133,10 +122,11 @@ function search() {
 
 <template>
   <div class="page">
-    <div class="head">
+    <header class="head">
       <h1>题库</h1>
-      <p class="sub">筛选题目，点击进入做题页。</p>
-    </div>
+      <p class="sub">支持分类多选与关键词模糊搜索；离开本页再返回时筛选条件仍会保留。</p>
+      <p v-if="total > 0" class="count">共 {{ total }} 道题目</p>
+    </header>
 
     <div class="toolbar card">
       <input
@@ -146,13 +136,13 @@ function search() {
         placeholder="标题、描述、格式、样例或分类名…"
         @keyup.enter="search"
       />
-      <select v-model="difficulty" @change="search">
+      <select v-model="difficulty">
         <option value="">全部难度</option>
         <option value="easy">简单</option>
         <option value="medium">中等</option>
         <option value="hard">困难</option>
       </select>
-      <select v-if="auth.isLoggedIn" v-model="status" @change="search">
+      <select v-if="auth.isLoggedIn" v-model="status">
         <option value="">全部状态</option>
         <option :value="0">未通过</option>
         <option :value="1">已通过</option>
@@ -236,9 +226,15 @@ function search() {
 }
 
 .sub {
-  margin: 0 0 18px;
+  margin: 0 0 6px;
   color: var(--lc-text-muted);
   font-size: 0.9rem;
+}
+
+.count {
+  margin: 0 0 14px;
+  font-size: 0.82rem;
+  color: var(--lc-accent);
 }
 
 .card {

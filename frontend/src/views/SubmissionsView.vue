@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+
+defineOptions({ name: 'SubmissionsView' })
 import { useRouter } from 'vue-router'
 import { fetchSubmissionList } from '@/api/user'
 import type { SubmissionListItem } from '@/types/api'

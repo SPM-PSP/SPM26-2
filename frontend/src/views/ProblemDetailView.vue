@@ -5,6 +5,9 @@ import { fetchProblemDetail, fetchProblemSolution } from '@/api/problem'
 import { judgeSubmit, type JudgeApiLanguage } from '@/api/judge'
 import type { JudgeSubmitResult, ProblemDetail, ProblemSolution, SolutionItem } from '@/types/api'
 import { difficultyClass, difficultyLabel, formatAcceptRate, verdictClass, verdictText } from '@/utils/format'
+import PageBack from '@/components/PageBack.vue'
+
+defineOptions({ name: 'ProblemDetailView' })
 
 const props = defineProps<{ id: string }>()
 const route = useRoute()
@@ -139,6 +142,7 @@ function goSubmissionDetail() {
 </script>
 
 <template>
+  <PageBack label="返回题库" to="/problems" />
   <div v-if="loading" class="state">加载题目…</div>
   <div v-else-if="err || !detail" class="state err">{{ err || '题目不存在' }}</div>
   <div v-else class="split">
