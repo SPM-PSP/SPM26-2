@@ -285,6 +285,11 @@
         FROM solution
         WHERE id = #{solutionId}
     </select>
+    <select id="selectCategoryIdByName" resultType="java.lang.Long">
+        SELECT id
+        FROM category
+        WHERE name = #{name}
+    </select>
 
     <insert id="insertSolution" parameterType="com.itheim.program_platform_backend.domain.po.Solution" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO solution(problem_id, title, content, language, code, create_user_id, create_time, update_time)

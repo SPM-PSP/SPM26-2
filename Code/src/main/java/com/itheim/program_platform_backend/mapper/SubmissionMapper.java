@@ -16,8 +16,13 @@ public interface SubmissionMapper {
      * 查询用户提交记录列表
      */
     List<SubmissionListItemVO> selectSubmissionList(@Param("userId") Long userId,
-                                                     @Param("query") SubmissionQueryDTO queryDTO);
+                                                    @Param("query") SubmissionQueryDTO queryDTO);
 
     SubmissionDetailVO selectSubmissionDetail(@Param("submissionId") Long submissionId,
                                               @Param("userId") Long userId);
+
+    /**
+     * 插入提交记录
+     */
+    int insertSubmission(Submission submission);
 }

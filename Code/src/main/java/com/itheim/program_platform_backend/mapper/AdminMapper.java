@@ -101,6 +101,8 @@ public interface AdminMapper {
     int updateSolution(Solution solution);
 
     int deleteSolutionById(Long solutionId);
+
+    Long selectCategoryIdByName(String categoryName);
 }
 
 

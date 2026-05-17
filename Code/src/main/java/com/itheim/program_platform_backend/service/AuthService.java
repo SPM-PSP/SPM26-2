@@ -29,4 +29,9 @@ public interface AuthService {
     void changePassword(Long userId, ChangePasswordDTO changePasswordDTO);
 
     StudyStatisticsVO getStudyStatistics(Long userId);
+
+    /*
+    *  用户退出登录
+    * */
+    void logout();
 }

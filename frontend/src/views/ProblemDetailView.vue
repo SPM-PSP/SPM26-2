@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchProblemDetail, fetchProblemSolution } from '@/api/problem'
 import { judgeSubmit, type JudgeApiLanguage } from '@/api/judge'
+import http from '@/api/http'
 import type { JudgeSubmitResult, ProblemDetail, ProblemSolution, SolutionItem } from '@/types/api'
 import { difficultyClass, difficultyLabel, formatAcceptRate, verdictClass, verdictText } from '@/utils/format'
 import PageBack from '@/components/PageBack.vue'
@@ -36,22 +37,84 @@ const javaTemplate = `public class Main {
 }
 `
 
+const pythonTemplate = `def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+`
+
 const code = ref(cppTemplate)
 const judgeResult = ref<JudgeSubmitResult | null>(null)
 const submitApiMessage = ref('')
 const judging = ref(false)
+const running = ref(false)
 const judgeErr = ref('')
 const judgeLang = ref<JudgeApiLanguage>('C++')
+const codeEditor = ref<HTMLTextAreaElement | null>(null)
+
+// 自定义测试输入输出
+const customInput = ref('')
+const customOutput = ref('')
 
 const problemId = computed(() => Number(props.id || route.params.id))
 
 watch(judgeLang, (lang) => {
-  if (lang === 'C++' && code.value.trim().startsWith('public class Main')) {
+  if (lang === 'C++' && (code.value.trim().startsWith('public class Main') || code.value.includes('def main'))) {
     code.value = cppTemplate
-  } else if (lang === 'Java' && code.value.includes('#include')) {
+  } else if (lang === 'Java' && (code.value.includes('#include') || code.value.includes('def main'))) {
     code.value = javaTemplate
+  } else if (lang === 'Python' && (code.value.includes('#include') || code.value.includes('public class Main'))) {
+    code.value = pythonTemplate
   }
 })
+
+function handleTabKey(e: KeyboardEvent) {
+  if (e.key === 'Tab') {
+    e.preventDefault()
+    const target = e.target as HTMLTextAreaElement
+    const start = target.selectionStart
+    const end = target.selectionEnd
+    const value = target.value
+
+    // 插入 4 个空格作为缩进
+    target.value = value.substring(0, start) + '    ' + value.substring(end)
+
+    // 移动光标位置
+    target.selectionStart = target.selectionEnd = start + 4
+  }
+}
+
+function handleEnterKey(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    const target = e.target as HTMLTextAreaElement
+    const start = target.selectionStart
+    const value = target.value
+
+    // 获取当前行的内容
+    const lastNewline = value.lastIndexOf('\n', start - 1)
+    const currentLine = value.substring(lastNewline + 1, start)
+
+    // 提取当前行开头的空白字符（缩进）
+    const indentMatch = currentLine.match(/^(\s*)/)
+    const currentIndent = indentMatch ? indentMatch[1] : ''
+
+    // 检查是否需要增加缩进（行尾有 { 或 : ）
+    const trimmedLine = currentLine.trimEnd()
+    let extraIndent = ''
+    if (trimmedLine.endsWith('{') || trimmedLine.endsWith(':')) {
+      extraIndent = '    '
+    }
+
+    // 插入换行 + 当前缩进 + 额外缩进
+    const insertion = '\n' + currentIndent + extraIndent
+    target.value = value.substring(0, start) + insertion + value.substring(start)
+
+    // 移动光标到新行
+    target.selectionStart = target.selectionEnd = start + insertion.length
+  }
+}
 
 async function loadDetail() {
   loading.value = true
@@ -89,27 +152,27 @@ async function loadSolution() {
 }
 
 watch(
-  () => tab.value,
-  (t) => {
-    if (t === 'solution' && !solutions.value.length && !solLoading.value) void loadSolution()
-  },
+    () => tab.value,
+    (t) => {
+      if (t === 'solution' && !solutions.value.length && !solLoading.value) void loadSolution()
+    },
 )
 
 watch(
-  () => props.id,
-  () => {
-    void loadDetail()
-    solutions.value = []
-    judgeResult.value = null
-    submitApiMessage.value = ''
-  },
+    () => props.id,
+    () => {
+      void loadDetail()
+      solutions.value = []
+      judgeResult.value = null
+      submitApiMessage.value = ''
+    },
 )
 
 onMounted(() => {
   void loadDetail()
 })
 
-/** 文档 5.2：提交代码并触发服务端全量用例评测（含运行与判题） */
+/** 提交测评 - 使用数据库中的测试用例 */
 async function submitAndJudge() {
   if (!detail.value) return
   judging.value = true
@@ -122,16 +185,87 @@ async function submitAndJudge() {
       language: judgeLang.value,
       code: code.value,
     })
-    submitApiMessage.value = res.message || ''
+
+    // 后端现在直接返回 JudgeSubmitResult 格式的数据
     if (res.code !== 200 || !res.data) {
       judgeErr.value = res.message || '提交失败'
       return
     }
+
     judgeResult.value = res.data
+    submitApiMessage.value = '提交成功'
   } catch (e: unknown) {
     judgeErr.value = e instanceof Error ? e.message : '请求失败'
   } finally {
     judging.value = false
+  }
+}
+
+/** 运行 - 使用自定义输入输出进行测试 */
+async function runCode() {
+  if (!detail.value) return
+  if (!customInput.value.trim()) {
+    judgeErr.value = '请输入测试用例'
+    return
+  }
+
+  running.value = true
+  judgeErr.value = ''
+  judgeResult.value = null
+  submitApiMessage.value = ''
+
+  try {
+    const { data } = await http.post('/api/judge/submit', {
+      code: code.value,
+      language: mapLanguageToBackend(judgeLang.value),
+      input: customInput.value,
+      answer: customOutput.value || '',
+      timeLimit: detail.value.timeLimit,
+      memoryLimit: String(detail.value.memoryLimit),
+    })
+
+    const backendResult = data
+
+    // 转换后端返回格式为前端格式
+    judgeResult.value = convertBackendResult(backendResult)
+    submitApiMessage.value = backendResult.message || '运行完成'
+  } catch (e: unknown) {
+    judgeErr.value = e instanceof Error ? e.message : '请求失败'
+  } finally {
+    running.value = false
+  }
+}
+
+/** 映射前端语言到后端语言 */
+function mapLanguageToBackend(lang: JudgeApiLanguage): string {
+  const map: Record<JudgeApiLanguage, string> = {
+    'C++': 'cpp',
+    'Java': 'java',
+    'Python': 'python',
+  }
+  return map[lang]
+}
+
+/** 转换后端结果为前端格式 */
+function convertBackendResult(backendResult: any): JudgeSubmitResult {
+  const statusMap: Record<string, number> = {
+    'ACCEPTED': 0,
+    'COMPILE_ERROR': 1,
+    'RUNTIME_ERROR': 2,
+    'TIME_LIMIT_EXCEEDED': 3,
+    'MEMORY_LIMIT_EXCEEDED': 4,
+    'WRONG_ANSWER': 5,
+  }
+
+  return {
+    submissionId: 0,
+    runTime: 0,
+    memory: 0,
+    errorMsg: backendResult.compileLog || backendResult.runtimeLog || backendResult.diffLog || '',
+    submitTime: new Date().toLocaleString('zh-CN'),
+    result: statusMap[backendResult.status] ?? -1,
+    passCount: backendResult.status === 'ACCEPTED' ? 1 : 0,
+    totalCount: 1,
   }
 }
 
@@ -207,24 +341,38 @@ function goSubmissionDetail() {
           <select v-model="judgeLang" class="lang-select">
             <option value="C++">C++</option>
             <option value="Java">Java</option>
+            <option value="Python">Python</option>
           </select>
         </label>
         <div class="actions">
-          <button type="button" class="btn-run" :disabled="judging" @click="submitAndJudge">
-            {{ judging ? '提交评测中…' : '提交并评测' }}
+          <button type="button" class="btn-run" :disabled="running" @click="runCode">
+            {{ running ? '运行中…' : '运行' }}
+          </button>
+          <button type="button" class="btn-submit" :disabled="judging" @click="submitAndJudge">
+            {{ judging ? '提交评测中…' : '提交测评' }}
           </button>
         </div>
       </div>
-      <p class="hint sm">提交后由评测机在服务端运行代码，并对全部测试用例判题（文档 5.2）。</p>
-      <textarea v-model="code" class="editor" spellcheck="false" />
+      <p class="hint sm">
+        <strong>运行</strong>：使用下方自定义输入测试代码<br/>
+        <strong>提交测评</strong>：使用数据库中的测试用例进行正式判题
+      </p>
+      <textarea
+          ref="codeEditor"
+          v-model="code"
+          class="editor"
+          spellcheck="false"
+          @keydown="handleTabKey"
+          @keydown.enter="handleEnterKey"
+      />
 
       <div class="io-block">
-        <h4 class="io-title">题目样例（参考）</h4>
-        <p class="muted sm">样例与左侧描述一致，不参与本次请求；自测请在本地 IDE 运行。</p>
-        <label>样例输入</label>
-        <pre class="io ro">{{ detail.sampleInput }}</pre>
-        <label>样例输出</label>
-        <pre class="io ro">{{ detail.sampleOutput }}</pre>
+        <h4 class="io-title">自定义测试用例</h4>
+        <p class="muted sm">用于"运行"按钮的本地测试（可选）</p>
+        <label>测试输入</label>
+        <textarea v-model="customInput" class="io custom-io" placeholder="输入测试数据..." />
+        <label>期望输出（可选）</label>
+        <textarea v-model="customOutput" class="io custom-io" placeholder="输入期望的输出结果..." />
       </div>
 
       <div class="verdict">
@@ -232,8 +380,8 @@ function goSubmissionDetail() {
         <template v-else-if="judgeResult">
           <div class="verdict-line" :class="{ ac: judgeResult.result === 0 }">
             <span class="verdict-pill" :class="verdictClass(judgeResult.result)">{{
-              verdictText(judgeResult.result)
-            }}</span>
+                verdictText(judgeResult.result)
+              }}</span>
             <span v-if="submitApiMessage" class="muted sm"> — {{ submitApiMessage }}</span>
           </div>
           <p class="meta-line">
@@ -242,12 +390,12 @@ function goSubmissionDetail() {
           </p>
           <p v-if="judgeResult.errorMsg" class="err-msg">{{ judgeResult.errorMsg }}</p>
           <div class="row-actions">
-            <button type="button" class="btn-link" @click="goSubmissionDetail">
+            <button v-if="judgeResult.submissionId > 0" type="button" class="btn-link" @click="goSubmissionDetail">
               查看提交详情 #{{ judgeResult.submissionId }}
             </button>
           </div>
         </template>
-        <p v-else class="muted hint">提交代码后在此查看评测摘要。</p>
+        <p v-else class="muted hint">点击"运行"测试代码，或点击"提交测评"进行正式判题。</p>
       </div>
     </section>
   </div>
@@ -465,6 +613,22 @@ function goSubmissionDetail() {
   padding: 6px 16px;
   border-radius: 6px;
   border: none;
+  background: var(--lc-green);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.btn-run:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.btn-submit {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
   background: var(--lc-accent);
   color: #111;
   font-weight: 600;
@@ -472,7 +636,7 @@ function goSubmissionDetail() {
   font-size: 0.8rem;
 }
 
-.btn-run:disabled {
+.btn-submit:disabled {
   opacity: 0.6;
   cursor: wait;
 }
@@ -520,6 +684,11 @@ function goSubmissionDetail() {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.custom-io {
+  min-height: 60px;
+  border: 1px solid var(--lc-border);
 }
 
 .io.ro {

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-        <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-                "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.itheim.program_platform_backend.mapper.SubmissionMapper">
 
     <select id="selectSubmissionList" resultType="com.itheim.program_platform_backend.domain.vo.SubmissionListItemVO">
@@ -55,5 +55,37 @@
         WHERE s.id = #{submissionId}
           AND s.user_id = #{userId}
     </select>
+
+    <insert id="insertSubmission" parameterType="com.itheim.program_platform_backend.domain.po.Submission" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO submission (
+            user_id,
+            problem_id,
+            problem_title,
+            language,
+            code,
+            status,
+            pass_count,
+            total_count,
+            run_time,
+            memory,
+            error_msg,
+            submit_time,
+            create_time
+        ) VALUES (
+                     #{userId},
+                     #{problemId},
+                     #{problemTitle},
+                     #{language},
+                     #{code},
+                     #{status},
+                     #{passCount},
+                     #{totalCount},
+                     #{runTime},
+                     #{memory},
+                     #{errorMsg},
+                     #{submitTime},
+                     #{createTime}
+                 )
+    </insert>
 
 </mapper>

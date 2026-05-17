@@ -1,16 +1,16 @@
 import http from './http'
-import type { AiEvaluationDetail, ApiResult, ProblemDetail } from '@/types/api'
+import type { ApiResult, CodeAnalysisResponse } from '@/types/api'
 
-/** 文档 6.2：AI 生成题目（入库后返回题目详情含 problemId） */
-export async function aiCreateProblem(body: { difficulty: string; categoryNames: string[] }) {
-  const { data } = await http.post<ApiResult<ProblemDetail>>('/api/v1/ai/judge/create', body)
-  return data
+export interface CodeAnalysisRequest {
+  code: string
+  language: string
 }
 
-/** 文档 6.3：获取指定提交的 AI 多维评价 */
-export async function fetchAiEvaluation(submissionId: number) {
-  const { data } = await http.get<ApiResult<AiEvaluationDetail>>(
-    `/api/v1/ai/evaluation/${submissionId}`,
+/** 调用后端已有的代码分析接口 */
+export async function analyzeCode(request: CodeAnalysisRequest) {
+  const { data } = await http.post<CodeAnalysisResponse>(
+      '/api/algorithm/analyze-code',
+      request,
   )
   return data
 }
