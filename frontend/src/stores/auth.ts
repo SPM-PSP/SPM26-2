@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { LoginVO } from '@/types/api'
+import { useProblemListStore } from '@/stores/problemList'
+import { useSubmissionsListStore } from '@/stores/submissionsList'
+import { debugLog } from '@/utils/debugLog'
 
 const TOKEN_KEY = 'oj_token'
 const USER_KEY = 'oj_user_preview'
@@ -38,6 +41,11 @@ export const useAuthStore = defineStore('auth', () => {
     userPreview.value = null
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    useProblemListStore().reset()
+    useSubmissionsListStore().reset()
+    // #region agent log
+    debugLog('auth.ts:clear', 'session cleared, stores reset', {}, 'H1')
+    // #endregion
   }
 
   return { token, userPreview, isLoggedIn, isAdmin, setSession, clear }

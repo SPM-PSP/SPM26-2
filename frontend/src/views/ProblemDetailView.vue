@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PageBack from '@/components/PageBack.vue'
 import { fetchProblemDetail, fetchProblemSolution } from '@/api/problem'
 import { judgeSubmit, type JudgeApiLanguage } from '@/api/judge'
 import http from '@/api/http'
@@ -275,7 +276,9 @@ function goSubmissionDetail() {
 <template>
   <div v-if="loading" class="state">加载题目…</div>
   <div v-else-if="err || !detail" class="state err">{{ err || '题目不存在' }}</div>
-  <div v-else class="split">
+  <div v-else class="detail-wrap">
+    <PageBack to="/problems" label="返回题库" />
+    <div class="split">
     <section class="left card">
       <div class="title-bar">
         <h1>{{ detail.title }}</h1>
@@ -349,10 +352,6 @@ function goSubmissionDetail() {
           </button>
         </div>
       </div>
-      <p class="hint sm">
-        <strong>运行</strong>：使用下方自定义输入测试代码<br/>
-        <strong>提交测评</strong>：使用数据库中的测试用例进行正式判题
-      </p>
       <textarea
           ref="codeEditor"
           v-model="code"
@@ -364,7 +363,6 @@ function goSubmissionDetail() {
 
       <div class="io-block">
         <h4 class="io-title">自定义测试用例</h4>
-        <p class="muted sm">用于"运行"按钮的本地测试（可选）</p>
         <label>测试输入</label>
         <textarea v-model="customInput" class="io custom-io" placeholder="输入测试数据..." />
         <label>期望输出（可选）</label>
@@ -391,13 +389,20 @@ function goSubmissionDetail() {
             </button>
           </div>
         </template>
-        <p v-else class="muted hint">点击"运行"测试代码，或点击"提交测评"进行正式判题。</p>
+        <p v-else class="muted hint">运行或提交后将显示结果</p>
       </div>
     </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.detail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .state {
   padding: 48px;
   text-align: center;

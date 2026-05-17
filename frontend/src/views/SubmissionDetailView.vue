@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { analyzeCode } from '@/api/ai'
+import PageBack from '@/components/PageBack.vue'
 import { fetchSubmissionDetail } from '@/api/user'
 import type { CodeAnalysisResponse, SubmissionDetail } from '@/types/api'
 import { verdictClass, verdictText } from '@/utils/format'
 
 const props = defineProps<{ id: string }>()
-const router = useRouter()
 const detail = ref<SubmissionDetail | null>(null)
 const loading = ref(true)
 const err = ref('')
@@ -79,7 +78,7 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <button type="button" class="back" @click="router.push('/submissions')">← 返回</button>
+    <PageBack to="/submissions" label="返回提交记录" />
     <div v-if="loading" class="muted">加载中…</div>
     <div v-else-if="err || !detail" class="err">{{ err || '无数据' }}</div>
     <div v-else class="card">
@@ -104,7 +103,6 @@ onMounted(() => {
             {{ aiLoading ? '分析中…' : '获取 AI 评价' }}
           </button>
         </div>
-        <p class="muted sm">基于本次提交的代码，向服务端请求 AI 多维分析。</p>
         <p v-if="aiErr" class="err-msg">{{ aiErr }}</p>
         <template v-else-if="aiEval">
           <dl class="ai-dl">

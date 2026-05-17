@@ -1,219 +1,208 @@
 <script setup lang="ts">
-import { RouterLink, RouterView, useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
 const route = useRoute()
 
-// 需要缓存的页面名称列表
-const cachedViews = computed(() => [
-  'problems',        // 题库
-  'submissions',     // 提交记录
-  'ai-lab',          // AI 实验室
-])
+const navItems = [
+  { name: 'admin-users', label: '用户管理', path: '/admin/users' },
+  { name: 'admin-categories', label: '分类管理', path: '/admin/categories' },
+  { name: 'admin-problems', label: '题库管理', path: '/admin/problems' },
+]
 
 function logout() {
   auth.clear()
+  void router.push({ name: 'login' })
 }
 </script>
 
+<script lang="ts">
+export default { name: 'AdminLayout' }
+</script>
+
 <template>
-  <div class="layout">
-    <header class="nav">
-      <div class="nav-inner">
-        <RouterLink to="/problems" class="brand">
-          <span class="brand-mark" />
-          <span class="brand-text">OJ<span class="accent">Code</span></span>
-        </RouterLink>
-        <nav class="links">
-          <RouterLink to="/problems" class="nav-link">题库</RouterLink>
-          <RouterLink v-if="auth.isLoggedIn" to="/submissions" class="nav-link">提交记录</RouterLink>
-          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link">管理后台</RouterLink>
-          <RouterLink to="/ai" class="nav-link">AI 实验室</RouterLink>
-        </nav>
-        <div class="nav-right">
-          <template v-if="auth.isLoggedIn">
-            <RouterLink to="/profile" class="user-chip">
-              <img v-if="auth.userPreview?.avatar" :src="auth.userPreview.avatar" alt="" class="avatar" />
-              <span v-else class="avatar placeholder">{{ (auth.userPreview?.nickname || '?').slice(0, 1) }}</span>
-              <span class="nick">{{ auth.userPreview?.nickname || '用户' }}</span>
-            </RouterLink>
-            <button type="button" class="btn-ghost" @click="logout">退出</button>
-          </template>
-          <template v-else>
-            <RouterLink to="/login" class="btn-ghost">登录</RouterLink>
-            <RouterLink to="/register" class="btn-primary sm">注册</RouterLink>
-          </template>
-        </div>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <RouterLink to="/problems" class="back-site">
+        <span class="arrow">←</span>
+        返回前台
+      </RouterLink>
+      <div class="side-brand">
+        <span class="mark" />
+        <span>管理后台</span>
       </div>
-    </header>
-    <main class="main">
-      <RouterView v-slot="{ Component }">
-        <KeepAlive :include="cachedViews">
-          <component :is="Component" :key="route.fullPath" />
-        </KeepAlive>
-      </RouterView>
-    </main>
+      <nav class="side-nav">
+        <RouterLink
+          v-for="item in navItems"
+          :key="item.name"
+          :to="item.path"
+          class="side-link"
+          :class="{ active: route.name === item.name || (item.name === 'admin-problems' && String(route.name || '').startsWith('admin-problem')) }"
+        >
+          {{ item.label }}
+        </RouterLink>
+      </nav>
+      <div class="side-foot">
+        <span class="who">{{ auth.userPreview?.nickname || '管理员' }}</span>
+        <button type="button" class="btn-out" @click="logout">退出登录</button>
+      </div>
+    </aside>
+    <div class="admin-main">
+      <header class="admin-top">
+        <h1 class="top-title">OJCode 管理</h1>
+        <RouterLink to="/problems" class="top-link">前往题库</RouterLink>
+      </header>
+      <div class="admin-content">
+        <RouterView />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.layout {
-  min-height: 100%;
+.admin-shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--lc-bg);
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  padding: 20px 16px;
+  background: var(--lc-surface);
+  border-right: 1px solid var(--lc-border);
 }
 
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: rgba(22, 22, 22, 0.92);
-  border-bottom: 1px solid var(--lc-border);
-  backdrop-filter: blur(8px);
-}
-
-.nav-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 20px;
-  height: 52px;
-  display: flex;
+.back-site {
+  display: inline-flex;
   align-items: center;
-  gap: 28px;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--lc-text-muted);
+  border: 1px solid var(--lc-border);
+  transition: color 0.15s, border-color 0.15s;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: -0.02em;
-}
-
-.brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: linear-gradient(135deg, var(--lc-accent), #ff6b35);
-}
-
-.brand-text {
-  color: var(--lc-text);
-}
-
-.accent {
+.back-site:hover {
   color: var(--lc-accent);
+  border-color: var(--lc-accent-dim);
 }
 
-.links {
+.arrow {
+  font-size: 1rem;
+}
+
+.side-brand {
   display: flex;
   align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 24px;
+  padding: 0 8px;
+}
+
+.mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--lc-accent), #ff6b4a);
+}
+
+.side-nav {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   flex: 1;
 }
 
-.nav-link {
-  padding: 8px 14px;
-  border-radius: 6px;
+.side-link {
+  padding: 10px 14px;
+  border-radius: 8px;
   font-size: 0.9rem;
   color: var(--lc-text-muted);
+  transition: background 0.15s, color 0.15s;
 }
 
-.nav-link.router-link-active {
+.side-link:hover {
   color: var(--lc-text);
   background: var(--lc-surface-2);
 }
 
-.nav-link:hover {
+.side-link.active {
   color: var(--lc-accent);
+  background: rgba(255, 161, 22, 0.1);
+  font-weight: 600;
 }
 
-.nav-right {
+.side-foot {
+  padding-top: 16px;
+  border-top: 1px solid var(--lc-border);
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
 }
 
-.user-chip {
+.who {
+  font-size: 0.85rem;
+  color: var(--lc-text-muted);
+  padding: 0 8px;
+}
+
+.btn-out {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--lc-border);
+  background: transparent;
+  color: var(--lc-text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-out:hover {
+  color: var(--lc-red);
+  border-color: var(--lc-red);
+}
+
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-top {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px 4px 4px;
-  border-radius: 999px;
-  background: var(--lc-surface-2);
-  border: 1px solid var(--lc-border);
-  font-size: 0.85rem;
+  justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--lc-border);
+  background: rgba(12, 14, 20, 0.6);
 }
 
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.avatar.placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--lc-border);
-  color: var(--lc-text-muted);
-  font-size: 0.75rem;
-}
-
-.nick {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-ghost {
-  background: transparent;
-  border: none;
-  color: var(--lc-text-muted);
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.btn-ghost:hover {
-  color: var(--lc-text);
-  background: var(--lc-surface-2);
-}
-
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 18px;
-  border-radius: 8px;
-  background: var(--lc-accent);
-  color: #1a1a1a;
+.top-title {
+  margin: 0;
+  font-size: 1rem;
   font-weight: 600;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
+  color: var(--lc-text-muted);
 }
 
-.btn-primary.sm {
-  padding: 6px 14px;
+.top-link {
   font-size: 0.85rem;
+  color: var(--lc-accent);
 }
 
-.btn-primary:hover {
-  filter: brightness(1.06);
-}
-
-.main {
+.admin-content {
   flex: 1;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 20px;
+  padding: 24px 28px;
+  overflow: auto;
 }
 </style>

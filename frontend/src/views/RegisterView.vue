@@ -2,8 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { register } from '@/api/auth'
-import { useAuthStore } from '@/stores/auth'
 import { validateRegisterPayload } from '@/utils/authValidators'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -13,7 +13,6 @@ const password = ref('')
 const email = ref('')
 const nickname = ref('')
 const err = ref('')
-const ok = ref('')
 const loading = ref(false)
 
 onMounted(() => {
@@ -24,7 +23,6 @@ onMounted(() => {
 
 async function onSubmit() {
   err.value = ''
-  ok.value = ''
   const v = validateRegisterPayload({
     username: username.value,
     password: password.value,
@@ -46,10 +44,7 @@ async function onSubmit() {
       err.value = res.message || '注册失败'
       return
     }
-    ok.value = res.message || '注册成功'
-    setTimeout(() => {
-      void router.replace('/login')
-    }, 800)
+    await router.replace('/login')
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
   } finally {
@@ -61,16 +56,25 @@ async function onSubmit() {
 <template>
   <div class="wrap">
     <div class="card">
+      <div class="card-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path
+            fill="currentColor"
+            d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+          />
+        </svg>
+      </div>
       <div class="brand">
         <span class="mark" />
         <span class="name">OJ<span class="accent">Code</span></span>
       </div>
-      <h1>注册</h1>
+      <h1>创建账号</h1>
+      <p class="lead">加入平台，开始你的算法练习之旅</p>
       <form class="form" @submit.prevent="onSubmit">
         <label for="reg-user">用户名</label>
         <input id="reg-user" v-model="username" type="text" autocomplete="username" maxlength="20" placeholder="3–20 位" />
         <label for="reg-email">邮箱</label>
-        <input id="reg-email" v-model="email" type="email" autocomplete="email" placeholder="常用邮箱" />
+        <input id="reg-email" v-model="email" type="email" autocomplete="email" placeholder="name@example.com" />
         <label for="reg-pass">密码</label>
         <input
           id="reg-pass"
@@ -81,14 +85,16 @@ async function onSubmit() {
           placeholder="8–20 位，含字母与数字"
         />
         <label for="reg-nick">昵称（可选）</label>
-        <input id="reg-nick" v-model="nickname" type="text" maxlength="20" placeholder="不填则与用户名相同" />
+        <input id="reg-nick" v-model="nickname" type="text" maxlength="20" placeholder="展示名称" />
         <p v-if="err" class="err">{{ err }}</p>
-        <p v-if="ok" class="ok">{{ ok }}</p>
-        <button type="submit" class="submit" :disabled="loading">{{ loading ? '提交中…' : '注册' }}</button>
+        <button type="submit" class="submit" :disabled="loading">
+          <span v-if="loading" class="spinner" aria-hidden="true" />
+          {{ loading ? '提交中…' : '注册' }}
+        </button>
       </form>
       <p class="foot">
         已有账号？
-        <RouterLink to="/login">登录</RouterLink>
+        <RouterLink to="/login">去登录</RouterLink>
       </p>
     </div>
   </div>
@@ -96,20 +102,38 @@ async function onSubmit() {
 
 <style scoped>
 .wrap {
-  min-height: calc(100vh - 52px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
   padding: 24px;
 }
 
 .card {
+  position: relative;
   width: 100%;
-  max-width: 400px;
-  background: var(--lc-surface);
-  border: 1px solid var(--lc-border);
+  background: linear-gradient(160deg, rgba(20, 24, 32, 0.98), rgba(14, 18, 26, 0.98));
+  border: 1px solid rgba(91, 124, 250, 0.25);
+  border-radius: 16px;
+  padding: 40px 36px 36px;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.card-badge {
+  position: absolute;
+  top: -14px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
-  padding: 32px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #5b7cfa, #7c5cbf);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(91, 124, 250, 0.35);
 }
 
 .brand {
@@ -120,15 +144,15 @@ async function onSubmit() {
 }
 
 .mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--lc-accent), #ff6b35);
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #5b7cfa, #7c5cbf);
 }
 
 .name {
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
 }
 
 .accent {
@@ -136,9 +160,15 @@ async function onSubmit() {
 }
 
 h1 {
-  margin: 0 0 20px;
-  font-size: 1.35rem;
-  font-weight: 700;
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.lead {
+  margin: 0 0 24px;
+  font-size: 0.88rem;
+  color: var(--lc-text-muted);
 }
 
 .form {
@@ -148,7 +178,7 @@ h1 {
 }
 
 label {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--lc-text-muted);
@@ -159,37 +189,37 @@ label:first-of-type {
 }
 
 input {
-  padding: 11px 12px;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
   font-size: 0.95rem;
 }
 
 .err {
-  margin-top: 6px;
+  margin-top: 12px;
   color: var(--lc-red);
   font-size: 0.85rem;
 }
 
-.ok {
-  margin-top: 6px;
-  color: var(--lc-green);
-  font-size: 0.85rem;
-}
-
 .submit {
-  margin-top: 18px;
+  margin-top: 20px;
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   border: none;
-  border-radius: 8px;
-  background: var(--lc-accent);
-  color: #111;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5b7cfa, #7c5cbf);
+  color: #fff;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .submit:hover:not(:disabled) {
-  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(91, 124, 250, 0.35);
 }
 
 .submit:disabled {
@@ -197,15 +227,30 @@ input {
   cursor: wait;
 }
 
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .foot {
-  margin-top: 22px;
+  margin-top: 24px;
   text-align: center;
   font-size: 0.9rem;
   color: var(--lc-text-muted);
 }
 
 .foot a {
-  color: var(--lc-accent);
+  color: #8aa4ff;
   font-weight: 600;
 }
 </style>

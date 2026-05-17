@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
+
+const cachedViews = ['ProblemListView', 'SubmissionsView', 'AiLabView']
 
 function logout() {
   auth.clear()
+  void router.push({ name: 'login' })
 }
+</script>
+
+<script lang="ts">
+export default { name: 'AppLayout' }
 </script>
 
 <template>
@@ -14,14 +22,14 @@ function logout() {
     <header class="nav">
       <div class="nav-inner">
         <RouterLink to="/problems" class="brand">
-          <span class="brand-mark" />
+          <span class="brand-mark" aria-hidden="true" />
           <span class="brand-text">OJ<span class="accent">Code</span></span>
         </RouterLink>
         <nav class="links">
           <RouterLink to="/problems" class="nav-link">题库</RouterLink>
           <RouterLink v-if="auth.isLoggedIn" to="/submissions" class="nav-link">提交记录</RouterLink>
-          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link">管理后台</RouterLink>
           <RouterLink to="/ai" class="nav-link">AI 实验室</RouterLink>
+          <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link">管理后台</RouterLink>
         </nav>
         <div class="nav-right">
           <template v-if="auth.isLoggedIn">
@@ -40,7 +48,11 @@ function logout() {
       </div>
     </header>
     <main class="main">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <KeepAlive :include="cachedViews">
+          <component :is="Component" />
+        </KeepAlive>
+      </RouterView>
     </main>
   </div>
 </template>
@@ -56,35 +68,36 @@ function logout() {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(22, 22, 22, 0.92);
+  background: rgba(12, 14, 20, 0.88);
   border-bottom: 1px solid var(--lc-border);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
 }
 
 .nav-inner {
-  max-width: 1280px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 0 20px;
-  height: 52px;
+  padding: 0 24px;
+  height: 56px;
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 24px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.12rem;
   letter-spacing: -0.02em;
 }
 
 .brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  background: linear-gradient(135deg, var(--lc-accent), #ff6b35);
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--lc-accent), #ff6b4a);
+  box-shadow: 0 0 20px rgba(255, 161, 22, 0.35);
 }
 
 .brand-text {
@@ -98,15 +111,16 @@ function logout() {
 .links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex: 1;
 }
 
 .nav-link {
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.9rem;
   color: var(--lc-text-muted);
+  transition: color 0.15s, background 0.15s;
 }
 
 .nav-link.router-link-active {
@@ -128,7 +142,7 @@ function logout() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px 4px 4px;
+  padding: 4px 12px 4px 4px;
   border-radius: 999px;
   background: var(--lc-surface-2);
   border: 1px solid var(--lc-border);
@@ -164,7 +178,7 @@ function logout() {
   color: var(--lc-text-muted);
   cursor: pointer;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.9rem;
 }
 
@@ -179,8 +193,8 @@ function logout() {
   justify-content: center;
   padding: 8px 18px;
   border-radius: 8px;
-  background: var(--lc-accent);
-  color: #1a1a1a;
+  background: linear-gradient(135deg, var(--lc-accent), #ff8c42);
+  color: #0c0e14;
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -198,9 +212,9 @@ function logout() {
 
 .main {
   flex: 1;
-  max-width: 1280px;
+  max-width: 1320px;
   width: 100%;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px;
 }
 </style>

@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onActivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchCategories, fetchProblemList, type ProblemListParams } from '@/api/problem'
 import { useAuthStore } from '@/stores/auth'
+import { useProblemListStore } from '@/stores/problemList'
 import type { CategoryVO, ProblemListItem } from '@/types/api'
+import { debugLog } from '@/utils/debugLog'
 import { difficultyClass, difficultyLabel, formatAcceptRate } from '@/utils/format'
 
 const router = useRouter()
 const auth = useAuthStore()
+const listStore = useProblemListStore()
 
 const categories = ref<CategoryVO[]>([])
 const catsLoading = ref(true)
@@ -15,14 +18,14 @@ const catsErr = ref('')
 const list = ref<ProblemListItem[]>([])
 const total = ref(0)
 const pages = ref(0)
-const currentPage = ref(1)
 const loading = ref(false)
 const err = ref('')
 
-const keyword = ref('')
-const difficulty = ref('')
-const status = ref<number | ''>('')
-const selectedCats = ref<string[]>([])
+const keyword = listStore.keyword
+const difficulty = listStore.difficulty
+const status = listStore.status
+const selectedCats = listStore.selectedCats
+const currentPage = listStore.currentPage
 
 let keywordDebounce: ReturnType<typeof setTimeout> | undefined
 
@@ -75,23 +78,14 @@ async function load() {
     total.value = Number(d?.total ?? 0)
     pages.value = Number(d?.pages ?? 0)
     currentPage.value = Number(d?.currentPage ?? 1)
+    listStore.listLoaded = true
     // #region agent log
-    fetch('http://127.0.0.1:7701/ingest/53fbfa53-e7fd-4c8a-9ae7-3df73473f0c6', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '69ddfc' },
-      body: JSON.stringify({
-        sessionId: '69ddfc',
-        location: 'ProblemListView.vue:load',
-        message: 'problem list loaded',
-        data: {
-          total: total.value,
-          keywordLen: keyword.value.length,
-          catFilters: selectedCats.value.length,
-        },
-        timestamp: Date.now(),
-        hypothesisId: 'H4',
-      }),
-    }).catch(() => {})
+    debugLog(
+      'ProblemListView.vue:load',
+      'list loaded',
+      { count: list.value.length, page: currentPage.value, keyword: keyword.value },
+      'H1',
+    )
     // #endregion
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
@@ -120,9 +114,26 @@ function openProblem(id: number) {
   router.push({ name: 'problem-detail', params: { id: String(id) } })
 }
 
+async function ensureList() {
+  const shouldLoad = !listStore.listLoaded || list.value.length === 0
+  // #region agent log
+  debugLog(
+    'ProblemListView.vue:ensureList',
+    'check load',
+    { listLoaded: listStore.listLoaded, listLen: list.value.length, shouldLoad },
+    'H1',
+  )
+  // #endregion
+  if (shouldLoad) await load()
+}
+
 onMounted(async () => {
   await loadCats()
-  await load()
+  await ensureList()
+})
+
+onActivated(() => {
+  void ensureList()
 })
 
 function search() {
@@ -131,12 +142,13 @@ function search() {
 }
 </script>
 
+<script lang="ts">
+export default { name: 'ProblemListView' }
+</script>
+
 <template>
   <div class="page">
-    <div class="head">
-      <h1>题库</h1>
-      <p class="sub">筛选题目，点击进入做题页。</p>
-    </div>
+    <h1 class="page-title">题库</h1>
 
     <div class="toolbar card">
       <input
@@ -176,7 +188,7 @@ function search() {
       </button>
       <button v-if="selectedCats.length" type="button" class="tag-clear" @click="clearCats">清空已选</button>
     </div>
-    <div v-else class="tags card muted-row">暂无分类，请管理员在后台维护后刷新。</div>
+    <div v-else class="tags card muted-row">暂无分类</div>
 
     <p v-if="err" class="err">{{ err }}</p>
 

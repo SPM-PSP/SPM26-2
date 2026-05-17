@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import PageBack from '@/components/PageBack.vue'
 import { fetchSubmissionList } from '@/api/user'
+import { useSubmissionsListStore } from '@/stores/submissionsList'
 import type { SubmissionListItem } from '@/types/api'
 import { verdictClass, verdictText } from '@/utils/format'
 
@@ -12,13 +14,14 @@ function listResult(s: SubmissionListItem): number {
 }
 
 const router = useRouter()
+const store = useSubmissionsListStore()
 const list = ref<SubmissionListItem[]>([])
 const total = ref(0)
 const pages = ref(0)
-const page = ref(1)
 const loading = ref(false)
 const err = ref('')
-const resultFilter = ref<number | ''>('')
+const page = store.page
+const resultFilter = store.resultFilter
 
 async function load() {
   loading.value = true
@@ -38,6 +41,7 @@ async function load() {
     total.value = Number(d?.total ?? 0)
     pages.value = Number(d?.pages ?? 0)
     page.value = Number(d?.currentPage ?? 1)
+    store.listLoaded = true
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
   } finally {
@@ -59,9 +63,14 @@ function applyFilter() {
 }
 </script>
 
+<script lang="ts">
+export default { name: 'SubmissionsView' }
+</script>
+
 <template>
   <div class="page">
-    <h1>提交记录</h1>
+    <PageBack to="/problems" label="返回题库" />
+    <h1 class="page-title">提交记录</h1>
     <div class="toolbar card">
       <select v-model="resultFilter" @change="applyFilter">
         <option value="">全部结果</option>
