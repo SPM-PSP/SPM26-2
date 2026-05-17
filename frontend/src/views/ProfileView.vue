@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-
-defineOptions({ name: 'ProfileView' })
 import { fetchUserInfo } from '@/api/user'
 import type { UserInfo } from '@/types/api'
 

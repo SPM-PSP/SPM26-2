@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchAiEvaluation } from '@/api/ai'
+import { analyzeCode } from '@/api/ai'
 import { fetchSubmissionDetail } from '@/api/user'
 import type { CodeAnalysisResponse, SubmissionDetail } from '@/types/api'
 import { verdictClass, verdictText } from '@/utils/format'
-import PageBack from '@/components/PageBack.vue'
 
 const props = defineProps<{ id: string }>()
+const router = useRouter()
 const detail = ref<SubmissionDetail | null>(null)
 const loading = ref(true)
 const err = ref('')
@@ -79,7 +79,7 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <PageBack label="返回提交记录" to="/submissions" />
+    <button type="button" class="back" @click="router.push('/submissions')">← 返回</button>
     <div v-if="loading" class="muted">加载中…</div>
     <div v-else-if="err || !detail" class="err">{{ err || '无数据' }}</div>
     <div v-else class="card">

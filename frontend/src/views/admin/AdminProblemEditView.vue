@@ -15,7 +15,6 @@ import {
   adminUpdateTestCase,
 } from '@/api/admin'
 import type { AdminProblemDetail, AdminTestCaseItem, CategoryVO, SolutionItem } from '@/types/api'
-import PageBack from '@/components/PageBack.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -313,9 +312,9 @@ watch(
 
 <template>
   <div class="page">
-    <PageBack label="返回题库列表" :to="{ name: 'admin-problems' }" />
     <div class="head">
       <h1>{{ isCreate ? '新增题目' : `编辑题目 #${problemId}` }}</h1>
+      <button type="button" class="btn" @click="router.push({ name: 'admin-problems' })">返回列表</button>
     </div>
 
     <p v-if="err" class="err">{{ err }}</p>

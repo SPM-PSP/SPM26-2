@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-
-defineOptions({ name: 'AdminUsersView' })
 import { adminAddUser, adminDeleteUser, adminUserList } from '@/api/admin'
 import type { AdminUserListItem } from '@/types/api'
 

@@ -96,31 +96,13 @@ export interface AdminProblemUpsertBody {
   memoryLimit: number
 }
 
-function problemBodyPayload(body: AdminProblemUpsertBody) {
-  return {
-    title: body.title,
-    difficulty: body.difficulty,
-    categoryNames: body.categoryNames,
-    description: body.description,
-    inputFormat: body.inputFormat,
-    outputFormat: body.outputFormat,
-    sampleInput: body.sampleInput,
-    sampleOutput: body.sampleOutput,
-    time_limit: body.timeLimit,
-    memory_limit: body.memoryLimit,
-  }
-}
-
 export async function adminAddProblem(body: AdminProblemUpsertBody) {
-  const { data } = await http.post<ApiResult<null>>(`${BASE}/problem`, problemBodyPayload(body))
+  const { data } = await http.post<ApiResult<null>>(`${BASE}/problem`, body)
   return data
 }
 
 export async function adminUpdateProblem(body: AdminProblemUpsertBody & { problemId: number }) {
-  const { data } = await http.put<ApiResult<null>>(`${BASE}/problem`, {
-    problemId: body.problemId,
-    ...problemBodyPayload(body),
-  })
+  const { data } = await http.put<ApiResult<null>>(`${BASE}/problem`, body)
   return data
 }
 

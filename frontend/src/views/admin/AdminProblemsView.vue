@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-
-defineOptions({ name: 'AdminProblemsView' })
 import { useRouter } from 'vue-router'
 import { adminProblemList } from '@/api/admin'
 import type { AdminProblemListItem } from '@/types/api'
