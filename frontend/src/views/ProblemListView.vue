@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onActivated, onMounted, ref, watch } from 'vue'
+import { onActivated, onMounted, ref, watch, toRefs } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchCategories, fetchProblemList, type ProblemListParams } from '@/api/problem'
 import { useAuthStore } from '@/stores/auth'
@@ -11,6 +11,7 @@ import { difficultyClass, difficultyLabel, formatAcceptRate } from '@/utils/form
 const router = useRouter()
 const auth = useAuthStore()
 const listStore = useProblemListStore()
+const { keyword, difficulty, status, selectedCats, currentPage } = toRefs(listStore)
 
 const categories = ref<CategoryVO[]>([])
 const catsLoading = ref(true)
@@ -20,12 +21,6 @@ const total = ref(0)
 const pages = ref(0)
 const loading = ref(false)
 const err = ref('')
-
-const keyword = listStore.keyword
-const difficulty = listStore.difficulty
-const status = listStore.status
-const selectedCats = listStore.selectedCats
-const currentPage = listStore.currentPage
 
 let keywordDebounce: ReturnType<typeof setTimeout> | undefined
 
@@ -81,10 +76,10 @@ async function load() {
     listStore.listLoaded = true
     // #region agent log
     debugLog(
-      'ProblemListView.vue:load',
-      'list loaded',
-      { count: list.value.length, page: currentPage.value, keyword: keyword.value },
-      'H1',
+        'ProblemListView.vue:load',
+        'list loaded',
+        { count: list.value.length, page: currentPage.value, keyword: keyword.value },
+        'H1',
     )
     // #endregion
   } catch (e: unknown) {
@@ -118,10 +113,10 @@ async function ensureList() {
   const shouldLoad = !listStore.listLoaded || list.value.length === 0
   // #region agent log
   debugLog(
-    'ProblemListView.vue:ensureList',
-    'check load',
-    { listLoaded: listStore.listLoaded, listLen: list.value.length, shouldLoad },
-    'H1',
+      'ProblemListView.vue:ensureList',
+      'check load',
+      { listLoaded: listStore.listLoaded, listLen: list.value.length, shouldLoad },
+      'H1',
   )
   // #endregion
   if (shouldLoad) await load()
@@ -152,11 +147,11 @@ export default { name: 'ProblemListView' }
 
     <div class="toolbar card">
       <input
-        v-model="keyword"
-        class="grow"
-        type="search"
-        placeholder="标题、描述、格式、样例或分类名…"
-        @keyup.enter="search"
+          v-model="keyword"
+          class="grow"
+          type="search"
+          placeholder="标题、描述、格式、样例或分类名…"
+          @keyup.enter="search"
       />
       <select v-model="difficulty" @change="search">
         <option value="">全部难度</option>
@@ -177,12 +172,12 @@ export default { name: 'ProblemListView' }
     <div v-else-if="categories.length" class="tags card">
       <span class="tags-label">分类（来自题库）</span>
       <button
-        v-for="c in categories"
-        :key="c.categoryId"
-        type="button"
-        class="tag"
-        :class="{ on: selectedCats.includes(c.categoryName) }"
-        @click="onTagClick(c.categoryName)"
+          v-for="c in categories"
+          :key="c.categoryId"
+          type="button"
+          class="tag"
+          :class="{ on: selectedCats.includes(c.categoryName) }"
+          @click="onTagClick(c.categoryName)"
       >
         {{ c.categoryName }}
       </button>
@@ -196,34 +191,34 @@ export default { name: 'ProblemListView' }
       <div v-if="loading" class="loading">加载中…</div>
       <table v-else class="table">
         <thead>
-          <tr>
-            <th class="col-status" />
-            <th>题目</th>
-            <th class="col-diff">难度</th>
-            <th class="col-rate">通过率</th>
-          </tr>
+        <tr>
+          <th class="col-status" />
+          <th>题目</th>
+          <th class="col-diff">难度</th>
+          <th class="col-rate">通过率</th>
+        </tr>
         </thead>
         <tbody>
-          <tr v-for="p in list" :key="p.problemId" class="row" @click="openProblem(p.problemId)">
-            <td class="col-status">
-              <span v-if="p.status === 1" class="dot solved" title="已通过" />
-              <span v-else-if="p.status === 0" class="dot tried" title="未通过" />
-              <span v-else class="dot none" />
-            </td>
-            <td>
-              <div class="title-row">
-                <span class="title">{{ p.title }}</span>
-                <span class="cats">{{ p.categoryNames?.join(' · ') }}</span>
-              </div>
-            </td>
-            <td>
-              <span class="pill" :class="difficultyClass(p.difficulty)">{{ difficultyLabel(p.difficulty) }}</span>
-            </td>
-            <td class="muted">{{ formatAcceptRate(p.acceptRate) }}</td>
-          </tr>
+        <tr v-for="p in list" :key="p.problemId" class="row" @click="openProblem(p.problemId)">
+          <td class="col-status">
+            <span v-if="p.status === 1" class="dot solved" title="已通过" />
+            <span v-else-if="p.status === 0" class="dot tried" title="未通过" />
+            <span v-else class="dot none" />
+          </td>
+          <td>
+            <div class="title-row">
+              <span class="title">{{ p.title }}</span>
+              <span class="cats">{{ p.categoryNames?.join(' · ') ?? '' }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="pill" :class="difficultyClass(p.difficulty)">{{ difficultyLabel(p.difficulty) }}</span>
+          </td>
+          <td class="muted">{{ formatAcceptRate(p.acceptRate) }}</td>
+        </tr>
         </tbody>
       </table>
-      <div v-if="!loading && !list.length" class="empty">暂无题目</div>
+      <div v-if="!loading && (!list || !list.length)" class="empty">暂无题目</div>
     </div>
 
     <div v-if="pages > 1" class="pager">

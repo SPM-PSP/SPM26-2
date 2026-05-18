@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, toRefs } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBack from '@/components/PageBack.vue'
 import { fetchSubmissionList } from '@/api/user'
@@ -15,35 +15,43 @@ function listResult(s: SubmissionListItem): number {
 
 const router = useRouter()
 const store = useSubmissionsListStore()
+const { page, resultFilter } = toRefs(store)
 const list = ref<SubmissionListItem[]>([])
 const total = ref(0)
 const pages = ref(0)
 const loading = ref(false)
 const err = ref('')
-const page = store.page
-const resultFilter = store.resultFilter
 
 async function load() {
   loading.value = true
   err.value = ''
   try {
-    const res = await fetchSubmissionList({
+    const params = {
       page: page.value,
       size: 15,
       result: resultFilter.value === '' ? undefined : (resultFilter.value as number),
-    })
+    }
+    console.log('请求参数:', params)
+    const res = await fetchSubmissionList(params)
+    console.log('API完整响应:', res)
     if (res.code !== 200) {
       err.value = res.message || '加载失败'
+      console.error('API返回错误:', res.message)
       return
     }
     const d = res.data
+    console.log('数据部分(data):', d)
+    console.log('列表(list):', d?.list)
+    console.log('总数(total):', d?.total)
     list.value = d?.list ?? []
     total.value = Number(d?.total ?? 0)
     pages.value = Number(d?.pages ?? 0)
     page.value = Number(d?.currentPage ?? 1)
     store.listLoaded = true
+    console.log('最终列表长度:', list.value.length)
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '网络错误'
+    console.error('加载提交记录失败:', e)
   } finally {
     loading.value = false
   }
@@ -86,30 +94,30 @@ export default { name: 'SubmissionsView' }
       <div v-if="loading" class="muted pad">加载中…</div>
       <table v-else class="table">
         <thead>
-          <tr>
-            <th>状态</th>
-            <th>题目</th>
-            <th>分类</th>
-            <th>提交时间</th>
-          </tr>
+        <tr>
+          <th>状态</th>
+          <th>题目</th>
+          <th>分类</th>
+          <th>提交时间</th>
+        </tr>
         </thead>
         <tbody>
-          <tr v-for="s in list" :key="s.submissionId" class="row" @click="open(s.submissionId)">
-            <td>
-              <span class="verdict" :class="verdictClass(listResult(s))">{{ verdictText(listResult(s)) }}</span>
-            </td>
-            <td>#{{ s.problemId }} {{ s.problemTitle }}</td>
-            <td class="muted">{{ s.problemCategory }}</td>
-            <td class="muted">{{ s.submitTime }}</td>
-          </tr>
+        <tr v-for="s in list" :key="s.submissionId" class="row" @click="open(s.submissionId)">
+          <td>
+            <span class="verdict" :class="verdictClass(listResult(s))">{{ verdictText(listResult(s)) }}</span>
+          </td>
+          <td>#{{ s.problemId }} {{ s.problemTitle }}</td>
+          <td class="muted">{{ s.problemCategory }}</td>
+          <td class="muted">{{ s.submitTime }}</td>
+        </tr>
         </tbody>
       </table>
-      <div v-if="!loading && !list.length" class="muted pad">暂无提交</div>
+      <div v-if="!loading && (!list || !list.length)" class="muted pad">暂无提交</div>
     </div>
     <div v-if="pages > 1" class="pager">
-      <button type="button" class="btn" :disabled="page <= 1" @click="page--; load()">上一页</button>
-      <span>{{ page }} / {{ pages }}</span>
-      <button type="button" class="btn" :disabled="page >= pages" @click="page++; load()">下一页</button>
+      <button type="button" class="btn" :disabled="page.value <= 1" @click="page.value--; load()">上一页</button>
+      <span>{{ page.value }} / {{ pages.value }}</span>
+      <button type="button" class="btn" :disabled="page.value >= pages.value" @click="page.value++; load()">下一页</button>
     </div>
   </div>
 </template>

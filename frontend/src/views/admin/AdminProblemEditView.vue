@@ -114,7 +114,8 @@ async function loadSolutions() {
 }
 
 async function onSave() {
-  if (!selectedCats.value.length) {
+  // 修复点：增加 selectedCats.value 的非空判断
+  if (!selectedCats.value || !selectedCats.value.length) {
     err.value = '请至少选择一个题目分类'
     return
   }

@@ -11,9 +11,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: '0.0.0.0',
+    // Deleted:allowedHosts: ['124rk4096yv62.vicp.fun'],
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        // Deleted:target: 'https://124rk4096yv62.vicp.fun',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },

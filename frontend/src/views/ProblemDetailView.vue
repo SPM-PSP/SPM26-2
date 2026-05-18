@@ -152,7 +152,8 @@ async function loadSolution() {
 watch(
     () => tab.value,
     (t) => {
-      if (t === 'solution' && !solutions.value.length && !solLoading.value) void loadSolution()
+      // 修复点：增加 solutions.value 的非空判断
+      if (t === 'solution' && (!solutions.value || !solutions.value.length) && !solLoading.value) void loadSolution()
     },
 )
 
