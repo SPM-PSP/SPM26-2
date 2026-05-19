@@ -7,6 +7,11 @@ export const useAiLabStore = defineStore('aiLab', () => {
   const difficulty = ref('中等')
   const targetLanguage = ref('C++')
   const generatedProblem = ref<ProblemGenerateResponse | null>(null)
+  
+  // 添加生成任务状态
+  const isGenerating = ref(false)
+  const generationError = ref('')
+  const generationPromise = ref<Promise<ProblemGenerateResponse> | null>(null)
 
   const analyzeLang = ref('C++')
   const analyzeCode = ref(`#include <iostream>
@@ -19,6 +24,9 @@ int main() { return 0; }
     difficulty,
     targetLanguage,
     generatedProblem,
+    isGenerating,
+    generationError,
+    generationPromise,
     analyzeLang,
     analyzeCode,
   }
