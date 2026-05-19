@@ -72,43 +72,74 @@ public class JudgeV1Controller {
             return new Result<>(400, "题目暂无测试用例", null);
         }
 
-        ProblemTestCase firstTestCase = testCases.get(0);
-        log.info("测试用例ID: {}, inputUrl: {}, outputUrl: {}",
-                firstTestCase.getId(), firstTestCase.getInputUrl(), firstTestCase.getOutputUrl());
+        log.info("题目 {} 共有 {} 个测试用例", request.getProblemId(), testCases.size());
 
-        String input = readTestCaseContent(firstTestCase.getInputUrl());
-        String answer = readTestCaseContent(firstTestCase.getOutputUrl());
+        int passCount = 0;
+        int totalCount = testCases.size();
+        JudgeResponse judgeResponse = null;
+        StringBuilder allErrors = new StringBuilder();
+        boolean hasError = false;
 
-        if (input == null) {
-            log.error("读取测试输入失败: caseId={}, url={}", firstTestCase.getId(), firstTestCase.getInputUrl());
-            return new Result<>(500, "读取测试输入失败", null);
+        // 遍历所有测试用例进行判题
+        for (int i = 0; i < testCases.size(); i++) {
+            ProblemTestCase testCase = testCases.get(i);
+            log.info("正在判题: 测试用例 {}/{} (ID: {})", i + 1, totalCount, testCase.getId());
+
+            String input = readTestCaseContent(testCase.getInputUrl());
+            String answer = readTestCaseContent(testCase.getOutputUrl());
+
+            if (input == null || answer == null) {
+                log.error("读取测试用例 {} 失败", i + 1);
+                continue;
+            }
+
+            JudgeRequest judgeRequest = new JudgeRequest();
+            judgeRequest.setCode(request.getCode());
+            judgeRequest.setLanguage(request.getLanguage());
+            judgeRequest.setInput(input);
+            judgeRequest.setAnswer(answer);
+            judgeRequest.setTimeLimit(problem.getTimeLimit());
+            judgeRequest.setMemoryLimit(String.valueOf(problem.getMemoryLimit()));
+
+            judgeResponse = judgeService.judge(judgeRequest);
+
+            // 判断是否通过
+            if ("AC".equals(judgeResponse.getStatus())) {
+                passCount++;
+                log.info("测试用例 {}/{} 通过", i + 1, totalCount);
+            } else {
+                hasError = true;
+                log.info("测试用例 {}/{} 失败: {}", i + 1, totalCount, judgeResponse.getStatus());
+                
+                // 收集错误信息
+                allErrors.append(String.format("\n\n=== 测试用例 %d/%d ===\n", i + 1, totalCount));
+                allErrors.append("结果: ").append(judgeResponse.getStatus()).append("\n");
+                if (judgeResponse.getCompileLog() != null && !judgeResponse.getCompileLog().isEmpty()) {
+                    allErrors.append("编译错误:\n").append(judgeResponse.getCompileLog()).append("\n");
+                }
+                if (judgeResponse.getRuntimeLog() != null && !judgeResponse.getRuntimeLog().isEmpty()) {
+                    allErrors.append("运行时错误:\n").append(judgeResponse.getRuntimeLog()).append("\n");
+                }
+                if (judgeResponse.getDiffLog() != null && !judgeResponse.getDiffLog().isEmpty()) {
+                    allErrors.append("答案差异:\n").append(judgeResponse.getDiffLog()).append("\n");
+                }
+                if (judgeResponse.getUserOutput() != null && !judgeResponse.getUserOutput().isEmpty()) {
+                    allErrors.append("你的输出:\n").append(judgeResponse.getUserOutput()).append("\n");
+                }
+                
+                // 如果有编译错误或运行时错误，直接停止后续测试
+                if ("CE".equals(judgeResponse.getStatus()) || "RE".equals(judgeResponse.getStatus())) {
+                    log.info("编译错误或运行时错误，停止后续测试用例");
+                    break;
+                }
+            }
         }
 
-        if (answer == null) {
-            log.error("读取测试输出失败: caseId={}, url={}", firstTestCase.getId(), firstTestCase.getOutputUrl());
-            return new Result<>(500, "读取测试输出失败", null);
-        }
-
-        log.info("成功读取测试用例，输入长度: {}, 答案长度: {}", input.length(), answer.length());
-
-        JudgeRequest judgeRequest = new JudgeRequest();
-        judgeRequest.setCode(request.getCode());
-        judgeRequest.setLanguage(request.getLanguage());
-        judgeRequest.setInput(input);
-        judgeRequest.setAnswer(answer);
-        judgeRequest.setTimeLimit(problem.getTimeLimit());
-        judgeRequest.setMemoryLimit(String.valueOf(problem.getMemoryLimit()));
-
-        JudgeResponse judgeResponse = judgeService.judge(judgeRequest);
-
-        log.info("判题完成: userId={}, problemId={}, status={}", userId, request.getProblemId(), judgeResponse.getStatus());
+        log.info("判题完成: userId={}, problemId={}, 通过数={}, 总数={}", userId, request.getProblemId(), passCount, totalCount);
 
         // 将判题结果转换为提交记录状态码
-        Integer statusCode = convertStatusToCode(judgeResponse.getStatus());
-
-        // 计算通过的测试用例数（这里简化为：AC则全部通过，否则为0）
-        Integer passCount = statusCode == 0 ? 1 : 0;
-        Integer totalCount = 1; // 当前只使用第一个测试用例
+        // 如果全部通过，则为 AC；否则根据最后一个失败的用例状态决定
+        Integer statusCode = hasError ? convertStatusToCode(judgeResponse.getStatus()) : 0;
 
         // 创建提交记录
         Submission submission = new Submission();
@@ -124,7 +155,10 @@ public class JudgeV1Controller {
         submission.setMemory(0);  // 可以从判题日志中解析
         
         // 构建详细错误信息
-        String detailedErrorMsg = buildDetailedErrorMessage(judgeResponse);
+        String detailedErrorMsg = allErrors.toString();
+        if (statusCode == 0 && detailedErrorMsg.isEmpty()) {
+            detailedErrorMsg = "通过所有测试用例";
+        }
         submission.setErrorMsg(detailedErrorMsg);
         submission.setSubmitTime(LocalDateTime.now());
         submission.setCreateTime(LocalDateTime.now());

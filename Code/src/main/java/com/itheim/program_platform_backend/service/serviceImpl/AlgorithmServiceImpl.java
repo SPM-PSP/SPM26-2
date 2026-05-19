@@ -98,11 +98,13 @@ public class AlgorithmServiceImpl implements AlgorithmService {
         List<String> sampleInputs = new ArrayList<>();
         sampleInputs.add(extractField(llmResponse, "【样例输入1】："));
         sampleInputs.add(extractField(llmResponse, "【样例输入2】："));
+        sampleInputs.add(extractField(llmResponse, "【样例输入3】："));
         response.setSampleInput(sampleInputs);
 
         List<String> sampleOutputs = new ArrayList<>();
         sampleOutputs.add(extractField(llmResponse, "【样例输出1】："));
         sampleOutputs.add(extractField(llmResponse, "【样例输出2】："));
+        sampleOutputs.add(extractField(llmResponse, "【样例输出3】："));
         response.setSampleOutput(sampleOutputs);
 
         response.setInputFormat(extractField(llmResponse, "【输入格式】："));
@@ -245,6 +247,7 @@ public class AlgorithmServiceImpl implements AlgorithmService {
                 "【题目名称】：", "【题目描述】：",
                 "【样例输入1】：", "【样例输出1】：",
                 "【样例输入2】：", "【样例输出2】：",
+                "【样例输入3】：", "【样例输出3】：",
                 "【输入格式】：", "【输出格式】："};
 
         int endIndex = content.length();

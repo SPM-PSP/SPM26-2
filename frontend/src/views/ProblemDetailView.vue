@@ -260,14 +260,14 @@ function convertBackendResult(backendResult: any): JudgeSubmitResult {
   const result = statusMap[backendResult.status] ?? 2 // 默认归为运行错误
 
   return {
-    submissionId: 0,
-    runTime: 0,
-    memory: 0,
-    errorMsg: backendResult.compileLog || backendResult.runtimeLog || backendResult.diffLog || '',
-    submitTime: new Date().toLocaleString('zh-CN'),
+    submissionId: backendResult.submissionId || 0,
+    runTime: backendResult.runTime || 0,
+    memory: backendResult.memory || 0,
+    errorMsg: backendResult.errorMsg || '',
+    submitTime: backendResult.submitTime || new Date().toLocaleString('zh-CN'),
     result: result,
-    passCount: backendResult.status === 'ACCEPTED' ? 1 : 0,
-    totalCount: 1,
+    passCount: backendResult.passCount || 0,
+    totalCount: backendResult.totalCount || 1,
   }
 }
 

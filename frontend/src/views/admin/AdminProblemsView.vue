@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { adminProblemList } from '@/api/admin'
+import { adminProblemList, adminDeleteProblem } from '@/api/admin'
 import type { AdminProblemListItem } from '@/types/api'
 import { difficultyLabel } from '@/utils/format'
 
@@ -14,6 +14,7 @@ const keyword = ref('')
 const difficulty = ref('')
 const loading = ref(false)
 const err = ref('')
+const deleting = ref<number | null>(null) // 正在删除的题目ID
 
 async function load() {
   loading.value = true
@@ -47,6 +48,30 @@ function goNew() {
 
 function goEdit(id: number) {
   router.push({ name: 'admin-problem-edit', params: { id: String(id) } })
+}
+
+async function handleDelete(id: number, title: string) {
+  if (!confirm(`确定要删除题目「${title}」吗？此操作不可恢复！`)) {
+    return
+  }
+  
+  deleting.value = id
+  err.value = ''
+  
+  try {
+    const res = await adminDeleteProblem(id)
+    if (res.code !== 200) {
+      err.value = res.message || '删除失败'
+      return
+    }
+    
+    // 删除成功后重新加载列表
+    await load()
+  } catch (e: unknown) {
+    err.value = e instanceof Error ? e.message : '删除失败'
+  } finally {
+    deleting.value = null
+  }
 }
 
 onMounted(() => {
@@ -96,6 +121,14 @@ onMounted(() => {
             <td class="muted">{{ p.acceptRate }}</td>
             <td>
               <button type="button" class="link" @click="goEdit(p.problemId)">编辑</button>
+              <button 
+                type="button" 
+                class="link danger" 
+                :disabled="deleting === p.problemId"
+                @click="handleDelete(p.problemId, p.title)"
+              >
+                {{ deleting === p.problemId ? '删除中…' : '删除' }}
+              </button>
             </td>
           </tr>
         </tbody>
@@ -193,6 +226,14 @@ select {
   color: var(--lc-accent);
   cursor: pointer;
   font-size: 0.85rem;
+}
+.link.danger {
+  color: var(--lc-red);
+  margin-left: 8px;
+}
+.link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .pager {
   display: flex;
