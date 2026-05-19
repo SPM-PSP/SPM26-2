@@ -122,7 +122,10 @@ public class JudgeV1Controller {
         submission.setTotalCount(totalCount);
         submission.setRunTime(0); // 可以从判题日志中解析
         submission.setMemory(0);  // 可以从判题日志中解析
-        submission.setErrorMsg(judgeResponse.getMessage());
+        
+        // 构建详细错误信息
+        String detailedErrorMsg = buildDetailedErrorMessage(judgeResponse);
+        submission.setErrorMsg(detailedErrorMsg);
         submission.setSubmitTime(LocalDateTime.now());
         submission.setCreateTime(LocalDateTime.now());
 
@@ -139,13 +142,43 @@ public class JudgeV1Controller {
         responseVO.setSubmissionId(submission.getId());
         responseVO.setRunTime(submission.getRunTime());
         responseVO.setMemory(submission.getMemory());
-        responseVO.setErrorMsg(judgeResponse.getMessage());
+        responseVO.setErrorMsg(detailedErrorMsg);
         responseVO.setSubmitTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         responseVO.setResult(statusCode);
         responseVO.setPassCount(passCount);
         responseVO.setTotalCount(totalCount);
 
         return Result.success(responseVO);
+    }
+
+    /**
+     * 构建详细的错误信息
+     */
+    private String buildDetailedErrorMessage(JudgeResponse judgeResponse) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(judgeResponse.getMessage());
+        
+        // 添加编译错误日志
+        if (judgeResponse.getCompileLog() != null && !judgeResponse.getCompileLog().isEmpty()) {
+            sb.append("\n\n编译错误详情：\n").append(judgeResponse.getCompileLog());
+        }
+        
+        // 添加运行时错误日志
+        if (judgeResponse.getRuntimeLog() != null && !judgeResponse.getRuntimeLog().isEmpty()) {
+            sb.append("\n\n运行时错误详情：\n").append(judgeResponse.getRuntimeLog());
+        }
+        
+        // 添加答案错误差异信息
+        if (judgeResponse.getDiffLog() != null && !judgeResponse.getDiffLog().isEmpty()) {
+            sb.append("\n\n答案差异：\n").append(judgeResponse.getDiffLog());
+        }
+        
+        // 添加用户输出
+        if (judgeResponse.getUserOutput() != null && !judgeResponse.getUserOutput().isEmpty()) {
+            sb.append("\n\n你的输出：\n").append(judgeResponse.getUserOutput());
+        }
+        
+        return sb.toString();
     }
 
     /**

@@ -10,6 +10,7 @@ const navItems = [
   { name: 'admin-users', label: '用户管理', path: '/admin/users' },
   { name: 'admin-categories', label: '分类管理', path: '/admin/categories' },
   { name: 'admin-problems', label: '题库管理', path: '/admin/problems' },
+  { name: 'admin-problem-new', label: '添加题目', path: '/admin/problems/new' },
 ]
 
 function logout() {

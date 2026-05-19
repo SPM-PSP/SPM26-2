@@ -255,11 +255,12 @@ public class JudgeServiceImpl implements JudgeService {
 
     /**
      * 将内存限制字符串转换为 KB（整数）
-     * 支持格式: "256m", "500M", "1g", "1G", "524288" (已经是KB)
+     * 支持格式: "256m", "500M", "1g", "1G", "524288k", "65536" (纯数字默认为KB)
+     * 注意：数据库中存储的 memoryLimit 字段单位是 KB
      */
     private int parseMemoryLimitToKB(String memoryLimit) {
         if (memoryLimit == null || memoryLimit.isEmpty()) {
-            return 256 * 1024; // 默认 256MB
+            return 256 * 1024; // 默认 256MB = 262144 KB
         }
 
         memoryLimit = memoryLimit.trim().toLowerCase();
@@ -274,12 +275,11 @@ public class JudgeServiceImpl implements JudgeService {
                 double mb = Double.parseDouble(memoryLimit.substring(0, memoryLimit.length() - 1));
                 return (int) (mb * 1024);
             } else if (memoryLimit.endsWith("k")) {
-                // KB
+                // KB（去掉后缀直接返回）
                 return Integer.parseInt(memoryLimit.substring(0, memoryLimit.length() - 1));
             } else {
-                // 纯数字，假设是字节，转换为 KB
-                long bytes = Long.parseLong(memoryLimit);
-                return (int) (bytes / 1024);
+                // 纯数字，数据库中存储的单位就是 KB，直接返回
+                return Integer.parseInt(memoryLimit);
             }
         } catch (NumberFormatException e) {
             log.warn("内存限制格式解析失败: {}, 使用默认值 256MB", memoryLimit);
