@@ -240,6 +240,7 @@ public class AdminServiceImpl implements AdminService {
     @Override
     @Transactional
     public void addProblem(AdminProblemUpsertDTO dto) {
+        log.info("[AdminService] 开始添加题目: {}", dto.getTitle());
         ensureAdminRole();
         validateProblemUpsert(dto, false);
         List<Category> categories = loadCategories(dto.getCategoryNames());
@@ -259,10 +260,12 @@ public class AdminServiceImpl implements AdminService {
         problem.setUpdateTime(LocalDateTime.now());
 
         adminMapper.insertProblem(problem);
+        log.info("[AdminService] 题目插入成功，ID: {}, Title: {}", problem.getId(), problem.getTitle());
 
         for (Category category : categories) {
             adminMapper.insertProblemCategory(problem.getId(), category.getId(), LocalDateTime.now());
         }
+        log.info("[AdminService] 题目添加完成: {}", dto.getTitle());
     }
 
     @Override

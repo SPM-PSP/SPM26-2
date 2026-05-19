@@ -70,7 +70,7 @@ public class AlgorithmServiceImpl implements AlgorithmService {
                 请生成一道%s难度的%s算法题（目标语言：%s），要求输出结构化结果：
                 1. 题目名称：简洁明了，符合算法题命名规范；
                 2. 题目描述：详细说明题目要求、输入约束、数据范围；
-                3. 样例输入：给出2个典型输入案例,要求第1个输入输出样例数量级在5以内，第二个在10-60之间（根据题目复杂度）；
+                3. 样例输入：给出3个典型输入案例,要求第1个输入输出样例数量级在5以内，第2,3个在10-60之间（根据题目复杂度）；
                 4. 样例输出：对应样例输入的输出结果；
                 5. 输入格式：说明输入的格式规范；
                 6. 输出格式：说明输出的格式规范；
@@ -81,6 +81,8 @@ public class AlgorithmServiceImpl implements AlgorithmService {
                 【样例输出1】：xxx
                 【样例输入2】：xxx
                 【样例输出2】：xxx
+                【样例输入3】：xxx
+                【样例输出3】：xxx
                 【输入格式】：xxx
                 【输出格式】：xxx
                 """, request.getDifficulty(), request.getPlate(), request.getTargetLanguage());
@@ -106,8 +108,8 @@ public class AlgorithmServiceImpl implements AlgorithmService {
         response.setInputFormat(extractField(llmResponse, "【输入格式】："));
         response.setOutputFormat(extractField(llmResponse, "【输出格式】："));
 
-        // 保存题目和测试用例到数据库
-        saveProblemAndTestCases(response, request);
+        // 注意：不再自动保存题目，由用户点击“入库写题”时手动保存
+        // saveProblemAndTestCases(response, request);
 
         return response;
     }
