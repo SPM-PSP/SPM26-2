@@ -252,9 +252,12 @@ function convertBackendResult(backendResult: any): JudgeSubmitResult {
     'COMPILE_ERROR': 1,
     'RUNTIME_ERROR': 2,
     'TIME_LIMIT_EXCEEDED': 3,
-    'MEMORY_LIMIT_EXCEEDED': 4,
-    'WRONG_ANSWER': 5,
+    'MEMORY_LIMIT_EXCEEDED': 2,
+    'WRONG_ANSWER': 2,
+    'SYSTEM_ERROR': 2,
   }
+
+  const result = statusMap[backendResult.status] ?? 2 // 默认归为运行错误
 
   return {
     submissionId: 0,
@@ -262,7 +265,7 @@ function convertBackendResult(backendResult: any): JudgeSubmitResult {
     memory: 0,
     errorMsg: backendResult.compileLog || backendResult.runtimeLog || backendResult.diffLog || '',
     submitTime: new Date().toLocaleString('zh-CN'),
-    result: statusMap[backendResult.status] ?? -1,
+    result: result,
     passCount: backendResult.status === 'ACCEPTED' ? 1 : 0,
     totalCount: 1,
   }
@@ -373,7 +376,7 @@ function goSubmissionDetail() {
       <div class="verdict">
         <p v-if="judgeErr" class="judge-err">{{ judgeErr }}</p>
         <template v-else-if="judgeResult">
-          <div class="verdict-line" :class="{ ac: judgeResult.result === 0 }">
+          <div class="verdict-line" :class="{ ac: judgeResult.result === 0, wa: judgeResult.result !== 0 }">
             <span class="verdict-pill" :class="verdictClass(judgeResult.result)">{{
                 verdictText(judgeResult.result)
               }}</span>
@@ -383,7 +386,10 @@ function goSubmissionDetail() {
             用例 {{ judgeResult.passCount }} / {{ judgeResult.totalCount }} · {{ judgeResult.runTime }} ms ·
             {{ judgeResult.memory }} KB · {{ judgeResult.submitTime }}
           </p>
-          <p v-if="judgeResult.errorMsg" class="err-msg">{{ judgeResult.errorMsg }}</p>
+          
+          <!-- 错误信息（编译错误、运行时错误等） -->
+          <pre v-if="judgeResult.errorMsg" class="err-msg">{{ judgeResult.errorMsg }}</pre>
+          
           <div class="row-actions">
             <button v-if="judgeResult.submissionId > 0" type="button" class="btn-link" @click="goSubmissionDetail">
               查看提交详情 #{{ judgeResult.submissionId }}
@@ -722,6 +728,10 @@ function goSubmissionDetail() {
   color: var(--lc-green);
 }
 
+.verdict-line.wa {
+  color: var(--lc-red);
+}
+
 .verdict-pill {
   font-weight: 700;
 }
@@ -737,6 +747,42 @@ function goSubmissionDetail() {
   color: var(--lc-red);
   font-size: 0.85rem;
   white-space: pre-wrap;
+  background: rgba(255, 55, 95, 0.05);
+  padding: 10px;
+  border-radius: 6px;
+  border-left: 3px solid var(--lc-red);
+}
+
+.output-block {
+  margin-top: 12px;
+}
+
+.output-title {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--lc-text-muted);
+}
+
+.output-title.success {
+  color: var(--lc-green);
+}
+
+.user-output {
+  margin: 0;
+  padding: 10px;
+  background: #0d0d0d;
+  border-radius: 6px;
+  border: 1px solid var(--lc-border);
+  font-size: 0.8rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.user-output.success {
+  border-color: var(--lc-green);
+  background: rgba(0, 184, 163, 0.05);
 }
 
 .row-actions {

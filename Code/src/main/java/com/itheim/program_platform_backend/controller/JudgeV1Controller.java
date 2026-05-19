@@ -173,10 +173,7 @@ public class JudgeV1Controller {
             sb.append("\n\n答案差异：\n").append(judgeResponse.getDiffLog());
         }
         
-        // 添加用户输出
-        if (judgeResponse.getUserOutput() != null && !judgeResponse.getUserOutput().isEmpty()) {
-            sb.append("\n\n你的输出：\n").append(judgeResponse.getUserOutput());
-        }
+        // 注意：不再添加"你的输出"，由前端根据需要显示
         
         return sb.toString();
     }
