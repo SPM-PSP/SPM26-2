@@ -126,4 +126,12 @@
         WHERE id = #{userId}
     </select>
 
+    <!-- 更新题目通过率 -->
+    <update id="updateProblemPassRate">
+        UPDATE problem
+        SET pass_rate = #{passRate},
+            update_time = NOW()
+        WHERE id = #{problemId}
+    </update>
+
 </mapper>

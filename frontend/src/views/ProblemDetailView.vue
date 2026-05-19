@@ -7,10 +7,12 @@ import { judgeSubmit, type JudgeApiLanguage } from '@/api/judge'
 import http from '@/api/http'
 import type { JudgeSubmitResult, ProblemDetail, ProblemSolution, SolutionItem } from '@/types/api'
 import { difficultyClass, difficultyLabel, formatAcceptRate, verdictClass, verdictText } from '@/utils/format'
+import { useProblemEditStore } from '@/stores/problemEdit'
 
 const props = defineProps<{ id: string }>()
 const route = useRoute()
 const router = useRouter()
+const problemEditStore = useProblemEditStore()
 
 const tab = ref<'desc' | 'solution'>('desc')
 const detail = ref<ProblemDetail | null>(null)
@@ -57,13 +59,47 @@ const customOutput = ref('')
 
 const problemId = computed(() => Number(props.id || route.params.id))
 
+// 从 store 恢复代码或使用默认模板
+function loadCodeFromCache() {
+  const cached = problemEditStore.codeCache[problemId.value]
+  if (cached) {
+    code.value = cached.code
+    judgeLang.value = cached.language as JudgeApiLanguage
+  } else {
+    // 使用默认模板
+    code.value = cppTemplate
+    judgeLang.value = 'C++'
+  }
+}
+
+// 保存代码到 store
+function saveCodeToCache() {
+  problemEditStore.codeCache[problemId.value] = {
+    code: code.value,
+    language: judgeLang.value,
+  }
+}
+
+// 监听代码变化，自动保存
+watch(code, () => {
+  saveCodeToCache()
+})
+
+watch(judgeLang, () => {
+  saveCodeToCache()
+})
+
 watch(judgeLang, (lang) => {
+  // 只在代码是其他语言的模板时才切换
   if (lang === 'C++' && (code.value.trim().startsWith('public class Main') || code.value.includes('def main'))) {
     code.value = cppTemplate
+    saveCodeToCache()
   } else if (lang === 'Java' && (code.value.includes('#include') || code.value.includes('def main'))) {
     code.value = javaTemplate
+    saveCodeToCache()
   } else if (lang === 'Python' && (code.value.includes('#include') || code.value.includes('public class Main'))) {
     code.value = pythonTemplate
+    saveCodeToCache()
   }
 })
 
@@ -164,11 +200,19 @@ watch(
       solutions.value = []
       judgeResult.value = null
       submitApiMessage.value = ''
+      // 记住新题目 ID
+      problemEditStore.lastProblemId = problemId.value
+      // 恢复新题目的代码
+      loadCodeFromCache()
     },
 )
 
 onMounted(() => {
   void loadDetail()
+  // 记住当前题目 ID
+  problemEditStore.lastProblemId = problemId.value
+  // 恢复代码
+  loadCodeFromCache()
 })
 
 /** 提交测评 - 使用数据库中的测试用例 */
@@ -225,14 +269,49 @@ async function runCode() {
 
     const backendResult = data
 
-    // 转换后端返回格式为前端格式
-    judgeResult.value = convertBackendResult(backendResult)
-    submitApiMessage.value = backendResult.message || '运行完成'
+    // 运行接口返回的是 JudgeResponse，status 是字符串（AC/WA/CE/RE/TLE 等）
+    // 需要转换为前端格式
+    const statusMap: Record<string, number> = {
+      'AC': 0,
+      'CE': 1,
+      'RE': 2,
+      'TLE': 3,
+      'MLE': 2,
+      'WA': 2,
+      'SYSTEM_ERROR': 2,
+    }
+
+    const result = statusMap[backendResult.status] ?? 2
+
+    judgeResult.value = {
+      submissionId: 0, // 运行不保存提交记录
+      runTime: 0,
+      memory: 0,
+      errorMsg: backendResult.compileLog || backendResult.runtimeLog || backendResult.diffLog || '',
+      submitTime: new Date().toLocaleString('zh-CN'),
+      result: result,
+      passCount: result === 0 ? 1 : 0,
+      totalCount: 1,
+    }
+    
+    // 根据状态设置提示信息
+    if (result === 0) {
+      submitApiMessage.value = '答案正确'
+    } else {
+      submitApiMessage.value = backendResult.message || '运行完成'
+    }
   } catch (e: unknown) {
     judgeErr.value = e instanceof Error ? e.message : '请求失败'
   } finally {
     running.value = false
   }
+}
+
+/** 使用样例数据填充自定义测试 */
+function useSample() {
+  if (!detail.value?.sampleInput) return
+  customInput.value = detail.value.sampleInput
+  customOutput.value = detail.value.sampleOutput || ''
 }
 
 /** 映射前端语言到后端语言 */
@@ -366,7 +445,13 @@ function goSubmissionDetail() {
       />
 
       <div class="io-block">
-        <h4 class="io-title">自定义测试用例</h4>
+        <div class="io-title-row">
+          <h4 class="io-title">自定义测试用例</h4>
+          <button type="button" class="btn-use-sample" @click="useSample" :disabled="!detail?.sampleInput">
+            <span class="icon">📋</span>
+            使用样例
+          </button>
+        </div>
         <label>测试输入</label>
         <textarea v-model="customInput" class="io custom-io" placeholder="输入测试数据..." />
         <label>期望输出（可选）</label>
@@ -665,11 +750,48 @@ function goSubmissionDetail() {
   margin-top: 12px;
 }
 
+.io-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
 .io-title {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--lc-text-muted);
+}
+
+.btn-use-sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-surface-2);
+  color: var(--lc-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-use-sample:hover:not(:disabled) {
+  background: var(--lc-accent);
+  color: #fff;
+  border-color: var(--lc-accent);
+}
+
+.btn-use-sample:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-use-sample .icon {
+  font-size: 0.9rem;
 }
 
 .io-block label {

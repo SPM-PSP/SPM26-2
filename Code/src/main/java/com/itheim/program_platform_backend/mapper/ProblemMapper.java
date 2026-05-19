@@ -63,4 +63,9 @@ public interface ProblemMapper {
      * 根据用户ID查询用户名
      */
     String selectUsernameById(Long userId);
+
+    /**
+     * 更新题目通过率
+     */
+    int updateProblemPassRate(@Param("problemId") Long problemId, @Param("passRate") java.math.BigDecimal passRate);
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchCategories, fetchProblemSolution } from '@/api/problem'
 import {
@@ -15,41 +15,99 @@ import {
   adminUpdateTestCase,
 } from '@/api/admin'
 import type { AdminProblemDetail, AdminTestCaseItem, CategoryVO, SolutionItem } from '@/types/api'
+import { useProblemEditStore } from '@/stores/problemEdit'
 
 const route = useRoute()
 const router = useRouter()
+const editStore = useProblemEditStore()
 
 const isCreate = computed(() => route.name === 'admin-problem-new')
 const problemId = computed(() => (isCreate.value ? NaN : Number(route.params.id)))
 
 const categories = ref<CategoryVO[]>([])
-const selectedCats = ref<string[]>([])
 
-const title = ref('')
-const difficulty = ref('easy')
-const description = ref('')
-const inputFormat = ref('')
-const outputFormat = ref('')
-const sampleInput = ref('')
-const sampleOutput = ref('')
-const timeLimit = ref(1000)
-const memoryLimit = ref(65536)
-
-const testCases = ref<AdminTestCaseItem[]>([])
-const solutions = ref<SolutionItem[]>([])
+// 从 store 获取响应式数据
+const selectedCats = computed({
+  get: () => editStore.selectedCats,
+  set: (val) => { editStore.selectedCats = val },
+})
+const title = computed({
+  get: () => editStore.title,
+  set: (val) => { editStore.title = val; editStore.isDirty = true },
+})
+const difficulty = computed({
+  get: () => editStore.difficulty,
+  set: (val) => { editStore.difficulty = val; editStore.isDirty = true },
+})
+const description = computed({
+  get: () => editStore.description,
+  set: (val) => { editStore.description = val; editStore.isDirty = true },
+})
+const inputFormat = computed({
+  get: () => editStore.inputFormat,
+  set: (val) => { editStore.inputFormat = val; editStore.isDirty = true },
+})
+const outputFormat = computed({
+  get: () => editStore.outputFormat,
+  set: (val) => { editStore.outputFormat = val; editStore.isDirty = true },
+})
+const sampleInput = computed({
+  get: () => editStore.sampleInput,
+  set: (val) => { editStore.sampleInput = val; editStore.isDirty = true },
+})
+const sampleOutput = computed({
+  get: () => editStore.sampleOutput,
+  set: (val) => { editStore.sampleOutput = val; editStore.isDirty = true },
+})
+const timeLimit = computed({
+  get: () => editStore.timeLimit,
+  set: (val) => { editStore.timeLimit = val; editStore.isDirty = true },
+})
+const memoryLimit = computed({
+  get: () => editStore.memoryLimit,
+  set: (val) => { editStore.memoryLimit = val; editStore.isDirty = true },
+})
+const testCases = computed({
+  get: () => editStore.testCases,
+  set: (val) => { editStore.testCases = val },
+})
+const solutions = computed({
+  get: () => editStore.solutions,
+  set: (val) => { editStore.solutions = val },
+})
+const newCaseInput = computed({
+  get: () => editStore.newCaseInput,
+  set: (val) => { editStore.newCaseInput = val },
+})
+const newCaseOutput = computed({
+  get: () => editStore.newCaseOutput,
+  set: (val) => { editStore.newCaseOutput = val },
+})
+const replaceCaseId = computed({
+  get: () => editStore.replaceCaseId,
+  set: (val) => { editStore.replaceCaseId = val },
+})
+const repInput = computed({
+  get: () => editStore.repInput,
+  set: (val) => { editStore.repInput = val },
+})
+const repOutput = computed({
+  get: () => editStore.repOutput,
+  set: (val) => { editStore.repOutput = val },
+})
+const solForm = computed({
+  get: () => editStore.solForm,
+  set: (val) => { editStore.solForm = val },
+})
+const editSol = computed({
+  get: () => editStore.editSol,
+  set: (val) => { editStore.editSol = val },
+})
+const isDirty = computed(() => editStore.isDirty)
 
 const err = ref('')
 const msg = ref('')
 const saving = ref(false)
-
-const newCaseInput = ref<File | null>(null)
-const newCaseOutput = ref<File | null>(null)
-const replaceCaseId = ref<number | null>(null)
-const repInput = ref<File | null>(null)
-const repOutput = ref<File | null>(null)
-
-const solForm = ref({ title: '', content: '', language: 'C++', code: '' })
-const editSol = ref<SolutionItem | null>(null)
 
 function toggleCat(name: string) {
   const i = selectedCats.value.indexOf(name)
@@ -75,25 +133,12 @@ async function loadDetail() {
       err.value = res.message || '加载失败'
       return
     }
-    applyDetail(res.data)
+    // 使用 store 加载数据
+    editStore.loadFromDetail(res.data)
     await loadSolutions()
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '请求失败'
   }
-}
-
-function applyDetail(d: AdminProblemDetail) {
-  title.value = d.title
-  difficulty.value = d.difficulty
-  description.value = d.description
-  inputFormat.value = d.inputFormat
-  outputFormat.value = d.outputFormat
-  sampleInput.value = d.sampleInput
-  sampleOutput.value = d.sampleOutput
-  timeLimit.value = d.timeLimit
-  memoryLimit.value = d.memoryLimit
-  selectedCats.value = [...(d.categoryNames ?? [])]
-  testCases.value = d.testCases ?? []
 }
 
 async function loadSolutions() {
@@ -141,6 +186,8 @@ async function onSave() {
         return
       }
       msg.value = res.message || '已创建'
+      // 保存成功后重置 store
+      editStore.reset()
       await router.replace({ name: 'admin-problems' })
     } else {
       const res = await adminUpdateProblem({
@@ -161,6 +208,8 @@ async function onSave() {
         return
       }
       msg.value = res.message || '已保存'
+      // 保存成功后标记为干净
+      editStore.isDirty = false
       await loadDetail()
     }
   } catch (e: unknown) {
@@ -168,6 +217,17 @@ async function onSave() {
   } finally {
     saving.value = false
   }
+}
+
+// 返回列表，检查是否有未保存的更改
+function goBack() {
+  if (isDirty.value) {
+    if (!confirm('有未保存的更改，确定要离开吗？')) {
+      return
+    }
+  }
+  editStore.reset()
+  void router.push({ name: 'admin-problems' })
 }
 
 async function onDeleteProblem() {
@@ -179,6 +239,7 @@ async function onDeleteProblem() {
       err.value = res.message || '删除失败'
       return
     }
+    editStore.reset()
     await router.replace({ name: 'admin-problems' })
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '请求失败'
@@ -198,8 +259,8 @@ async function onAddCase() {
       return
     }
     msg.value = res.message || '用例已添加'
-    newCaseInput.value = null
-    newCaseOutput.value = null
+    editStore.newCaseInput = null
+    editStore.newCaseOutput = null
     await loadDetail()
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '请求失败'
@@ -219,9 +280,9 @@ async function onReplaceCase() {
       return
     }
     msg.value = res.message || '用例已更新'
-    replaceCaseId.value = null
-    repInput.value = null
-    repOutput.value = null
+    editStore.replaceCaseId = null
+    editStore.repInput = null
+    editStore.repOutput = null
     await loadDetail()
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '请求失败'
@@ -300,22 +361,62 @@ async function onDeleteSolution(id: number) {
 
 onMounted(async () => {
   await loadCategories()
-  if (!isCreate.value) await loadDetail()
+  // 如果不是新建，加载题目详情
+  if (!isCreate.value) {
+    await loadDetail()
+  } else {
+    // 新建时重置 store
+    editStore.reset()
+  }
 })
 
+// 监听路由变化，但不重新加载（保持状态）
 watch(
   () => route.params.id,
-  () => {
-    if (!isCreate.value) void loadDetail()
+  (newId, oldId) => {
+    // 只在题目 ID 真正改变时才重新加载
+    if (newId !== oldId && !isCreate.value) {
+      void loadDetail()
+    }
   },
 )
+
+// 添加路由离开守卫，防止未保存的更改丢失
+onBeforeUnmount(() => {
+  // 不在这里重置，让状态保持
+})
 </script>
 
 <template>
   <div class="page">
+    <!-- 顶部引导按钮区域 -->
+    <div class="guide-banner">
+      <div class="guide-content">
+        <div class="guide-icon">✏️</div>
+        <div class="guide-text">
+          <h3>{{ isCreate ? '创建新题目' : '编辑题目' }}</h3>
+          <p>{{ isCreate ? '填写题目信息，保存后即可在题库中查看' : `正在编辑题目 #${problemId}，修改后记得保存` }}</p>
+        </div>
+        <div class="guide-actions">
+          <button type="button" class="btn-guide primary" @click="onSave" :disabled="saving">
+            <span class="icon">💾</span>
+            {{ saving ? '保存中…' : '保存题目' }}
+          </button>
+          <button type="button" class="btn-guide" @click="goBack">
+            <span class="icon">←</span>
+            返回列表
+          </button>
+        </div>
+      </div>
+      <!-- 未保存提示 -->
+      <div v-if="isDirty" class="dirty-indicator">
+        <span class="dot"></span>
+        有未保存的更改
+      </div>
+    </div>
+
     <div class="head">
       <h1>{{ isCreate ? '新增题目' : `编辑题目 #${problemId}` }}</h1>
-      <button type="button" class="btn" @click="router.push({ name: 'admin-problems' })">返回列表</button>
     </div>
 
     <p v-if="err" class="err">{{ err }}</p>
@@ -480,6 +581,148 @@ watch(
 .page {
   width: 100%;
 }
+
+/* 引导横幅样式 */
+.guide-banner {
+  background: linear-gradient(135deg, rgba(255, 161, 22, 0.1) 0%, rgba(255, 107, 74, 0.05) 100%);
+  border: 1px solid var(--lc-accent-dim);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.guide-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lc-accent), #ff6b4a);
+}
+
+.guide-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.guide-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.guide-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--lc-text);
+}
+
+.guide-text p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--lc-text-muted);
+}
+
+.guide-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.btn-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-surface-2);
+  color: var(--lc-text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-guide:hover:not(:disabled) {
+  background: var(--lc-surface);
+  border-color: var(--lc-accent-dim);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-guide.primary {
+  background: linear-gradient(135deg, var(--lc-accent), #ff6b4a);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+}
+
+.btn-guide.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff6b4a, var(--lc-accent));
+  box-shadow: 0 4px 12px rgba(255, 161, 22, 0.3);
+}
+
+.btn-guide:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-guide .icon {
+  font-size: 1rem;
+}
+
+.dirty-indicator {
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--lc-red);
+  animation: pulse 2s infinite;
+}
+
+.dirty-indicator .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--lc-red);
+  animation: blink 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 .head {
   display: flex;
   justify-content: space-between;

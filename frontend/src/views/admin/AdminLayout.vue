@@ -40,7 +40,7 @@ export default { name: 'AdminLayout' }
           :key="item.name"
           :to="item.path"
           class="side-link"
-          :class="{ active: route.name === item.name || (item.name === 'admin-problems' && String(route.name || '').startsWith('admin-problem')) }"
+          :class="{ active: route.name === item.name }"
         >
           {{ item.label }}
         </RouterLink>

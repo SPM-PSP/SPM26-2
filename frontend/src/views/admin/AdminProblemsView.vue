@@ -81,9 +81,25 @@ onMounted(() => {
 
 <template>
   <div class="page">
+    <!-- 顶部引导横幅 -->
+    <div class="guide-banner">
+      <div class="guide-content">
+        <div class="guide-icon">📚</div>
+        <div class="guide-text">
+          <h3>题库管理中心</h3>
+          <p>管理所有编程题目，支持创建、编辑和删除操作</p>
+        </div>
+        <div class="guide-actions">
+          <button type="button" class="btn-guide primary" @click="goNew">
+            <span class="icon">➕</span>
+            新增题目
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="head">
       <h1>题库管理</h1>
-      <button type="button" class="btn primary" @click="goNew">新增题目</button>
     </div>
 
     <div class="toolbar card">
@@ -147,6 +163,110 @@ onMounted(() => {
 .page {
   width: 100%;
 }
+
+/* 引导横幅样式 */
+.guide-banner {
+  background: linear-gradient(135deg, rgba(255, 161, 22, 0.08) 0%, rgba(255, 107, 74, 0.04) 100%);
+  border: 1px solid var(--lc-accent-dim);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.guide-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--lc-accent), #ff6b4a);
+}
+
+.guide-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.guide-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.guide-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.guide-text h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--lc-text);
+}
+
+.guide-text p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--lc-text-muted);
+}
+
+.guide-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.btn-guide {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 10px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-surface-2);
+  color: var(--lc-text);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-guide:hover:not(:disabled) {
+  background: var(--lc-surface);
+  border-color: var(--lc-accent-dim);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-guide.primary {
+  background: linear-gradient(135deg, var(--lc-accent), #ff6b4a);
+  color: #fff;
+  border: none;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(255, 161, 22, 0.3);
+}
+
+.btn-guide.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff6b4a, var(--lc-accent));
+  box-shadow: 0 6px 16px rgba(255, 161, 22, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-guide:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-guide .icon {
+  font-size: 1.1rem;
+}
+
 .head {
   display: flex;
   justify-content: space-between;

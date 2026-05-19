@@ -88,4 +88,19 @@
                  )
     </insert>
 
+    <!-- 统计题目的总提交用户数（去重） -->
+    <select id="countDistinctUsersByProblemId" resultType="java.lang.Integer">
+        SELECT COUNT(DISTINCT user_id)
+        FROM submission
+        WHERE problem_id = #{problemId}
+    </select>
+
+    <!-- 统计题目通过的用户数（去重，status=0表示通过） -->
+    <select id="countDistinctAcceptedUsersByProblemId" resultType="java.lang.Integer">
+        SELECT COUNT(DISTINCT user_id)
+        FROM submission
+        WHERE problem_id = #{problemId}
+          AND status = 0
+    </select>
+
 </mapper>

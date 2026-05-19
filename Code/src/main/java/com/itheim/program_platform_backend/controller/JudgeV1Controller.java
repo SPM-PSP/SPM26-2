@@ -167,6 +167,9 @@ public class JudgeV1Controller {
         try {
             submissionMapper.insertSubmission(submission);
             log.info("提交记录插入成功: submissionId={}", submission.getId());
+            
+            // 更新题目通过率
+            updateProblemPassRate(request.getProblemId());
         } catch (Exception e) {
             log.error("插入提交记录失败", e);
         }
@@ -235,6 +238,41 @@ public class JudgeV1Controller {
                 return 2; // 答案错误归类为运行错误
             default:
                 return -1; // 系统错误
+        }
+    }
+
+    /**
+     * 更新题目通过率
+     * 通过率 = (通过的用户数 / 总提交用户数) * 100%
+     */
+    private void updateProblemPassRate(Long problemId) {
+        try {
+            // 查询该题目的总提交用户数（去重）
+            Integer totalUsers = submissionMapper.countDistinctUsersByProblemId(problemId);
+            if (totalUsers == null || totalUsers == 0) {
+                log.debug("题目 {} 暂无提交记录", problemId);
+                return;
+            }
+            
+            // 查询该题目通过的用户数（去重，status=0表示通过）
+            Integer acceptedUsers = submissionMapper.countDistinctAcceptedUsersByProblemId(problemId);
+            if (acceptedUsers == null) {
+                acceptedUsers = 0;
+            }
+            
+            // 计算通过率（百分比）
+            java.math.BigDecimal passRate = java.math.BigDecimal.ZERO;
+            if (totalUsers > 0) {
+                passRate = java.math.BigDecimal.valueOf(acceptedUsers)
+                    .multiply(java.math.BigDecimal.valueOf(100))
+                    .divide(java.math.BigDecimal.valueOf(totalUsers), 2, java.math.RoundingMode.HALF_UP);
+            }
+            
+            // 更新题目通过率
+            problemMapper.updateProblemPassRate(problemId, passRate);
+            log.info("题目 {} 通过率已更新: {}% (通过:{}/总:{})", problemId, passRate, acceptedUsers, totalUsers);
+        } catch (Exception e) {
+            log.error("更新题目 {} 通过率失败", problemId, e);
         }
     }
 
