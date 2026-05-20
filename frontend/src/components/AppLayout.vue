@@ -71,8 +71,25 @@ export default { name: 'AppLayout' }
         <div class="nav-right">
           <template v-if="auth.isLoggedIn">
             <RouterLink to="/profile" class="user-chip">
-              <img v-if="auth.userPreview?.avatar" :src="auth.userPreview.avatar" alt="" class="avatar" />
-              <span v-else class="avatar placeholder">{{ (auth.userPreview?.nickname || '?').slice(0, 1) }}</span>
+              <img 
+                v-if="auth.userPreview?.avatar" 
+                :src="auth.userPreview.avatar" 
+                alt="头像" 
+                class="avatar"
+                @error="(e) => { 
+                  console.error('导航栏头像加载失败:', auth.userPreview?.avatar)
+                  const img = e.target as HTMLImageElement
+                  if (img) {
+                    img.style.display = 'none'
+                    // 显示占位符
+                    const placeholder = img.nextElementSibling as HTMLElement
+                    if (placeholder) {
+                      placeholder.style.display = 'inline-flex'
+                    }
+                  }
+                }"
+              />
+              <span class="avatar placeholder" style="display: none">{{ (auth.userPreview?.nickname || '?').slice(0, 1) }}</span>
               <span class="nick">{{ auth.userPreview?.nickname || '用户' }}</span>
             </RouterLink>
             <button type="button" class="btn-ghost" @click="logout">退出</button>

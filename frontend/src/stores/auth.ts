@@ -48,5 +48,10 @@ export const useAuthStore = defineStore('auth', () => {
     // #endregion
   }
 
-  return { token, userPreview, isLoggedIn, isAdmin, setSession, clear }
+  function updateUserPreview(preview: Partial<LoginVO>) {
+    userPreview.value = preview
+    localStorage.setItem(USER_KEY, JSON.stringify(preview))
+  }
+
+  return { token, userPreview, isLoggedIn, isAdmin, setSession, clear, updateUserPreview }
 })

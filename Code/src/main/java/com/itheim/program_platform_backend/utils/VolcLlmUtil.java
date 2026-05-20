@@ -19,6 +19,12 @@ public class VolcLlmUtil {
     private final OkHttpClient okHttpClient;
 
     public String callLlm(String prompt) {
+        // 验证 API Key 是否已配置
+        String apiKey = volcLlmConfig.getApiKey();
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new IllegalStateException("火山大模型 API Key 未配置，请设置环境变量 ARK_API_KEY");
+        }
+
         String requestBody = buildRequestJson(prompt);
 
         log.info("调用火山大模型 - URL: {}", volcLlmConfig.getBaseUrl() + "/chat/completions");
@@ -27,7 +33,7 @@ public class VolcLlmUtil {
 
         Request request = new Request.Builder()
                 .url(volcLlmConfig.getBaseUrl() + "/chat/completions")
-                .header("Authorization", "Bearer " + volcLlmConfig.getApiKey())
+                .header("Authorization", "Bearer " + apiKey)
                 .header("Content-Type", "application/json")
                 .post(RequestBody.create(requestBody, MediaType.get("application/json; charset=utf-8")))
                 .build();
