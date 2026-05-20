@@ -64,6 +64,8 @@ knife4j:
 #阿里云OSS
 aliyun:
   oss:
+    access-key-id: LTAI5tD59sFzNgfCrcK8DKZk
+    access-key-secret: QuVS3J8b0fT54VQ0jmt2mGxD7F5wnv
     endpoint: https://oss-cn-beijing.aliyuncs.com
     bucketName: oj-platform-smp2
     region: cn-beijing
