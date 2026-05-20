@@ -10,11 +10,12 @@ import {
   adminDeleteSolution,
   adminDeleteTestCase,
   adminProblemDetail,
+  adminProblemList,
   adminUpdateProblem,
   adminUpdateSolution,
   adminUpdateTestCase,
 } from '@/api/admin'
-import type { AdminProblemDetail, AdminTestCaseItem, CategoryVO, SolutionItem } from '@/types/api'
+import type { AdminProblemDetail, AdminProblemListItem, AdminTestCaseItem, CategoryVO, SolutionItem } from '@/types/api'
 import { useProblemEditStore } from '@/stores/problemEdit'
 
 const route = useRoute()
@@ -23,6 +24,13 @@ const editStore = useProblemEditStore()
 
 const isCreate = computed(() => route.name === 'admin-problem-new')
 const problemId = computed(() => (isCreate.value ? NaN : Number(route.params.id)))
+
+// 题目ID输入框（用于快速跳转）
+const problemIdInput = ref('')
+
+// 题目选择器（用于题解）
+const problemList = ref<AdminProblemListItem[]>([])
+const selectedProblemId = ref<number | null>(null)
 
 const categories = ref<CategoryVO[]>([])
 
@@ -122,6 +130,40 @@ async function loadCategories() {
   } catch {
     /* ignore */
   }
+}
+
+// 加载题目列表（用于题解选择）
+async function loadProblemList() {
+  try {
+    const res = await adminProblemList({
+      page: 1,
+      size: 50, // 加载更多题目供选择
+    })
+    if (res.code === 200 && res.data) {
+      problemList.value = res.data.list ?? []
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+// 选择题目并加载其题解
+async function onSelectProblemForSolution() {
+  if (!selectedProblemId.value) {
+    err.value = '请选择一个题目'
+    return
+  }
+  
+  // 如果有未保存的更改，提示用户
+  if (isDirty.value) {
+    if (!confirm('有未保存的更改，确定要切换题目吗？')) {
+      return
+    }
+  }
+  
+  // 重置 store 并跳转到该题目的编辑页面
+  editStore.reset()
+  void router.push({ name: 'admin-problem-edit', params: { id: String(selectedProblemId.value) } })
 }
 
 async function loadDetail() {
@@ -228,6 +270,24 @@ function goBack() {
   }
   editStore.reset()
   void router.push({ name: 'admin-problems' })
+}
+
+// 跳转到指定题目ID
+function goToProblem() {
+  const id = Number(problemIdInput.value)
+  if (!id || isNaN(id)) {
+    err.value = '请输入有效的题目 ID'
+    return
+  }
+  // 如果有未保存的更改，提示用户
+  if (isDirty.value) {
+    if (!confirm('有未保存的更改，确定要切换题目吗？')) {
+      return
+    }
+  }
+  // 跳转到编辑页面
+  editStore.reset()
+  void router.push({ name: 'admin-problem-edit', params: { id: String(id) } })
 }
 
 async function onDeleteProblem() {
@@ -361,6 +421,8 @@ async function onDeleteSolution(id: number) {
 
 onMounted(async () => {
   await loadCategories()
+  // 加载题目列表（用于题解选择）
+  await loadProblemList()
   // 如果不是新建，加载题目详情
   if (!isCreate.value) {
     await loadDetail()
@@ -417,6 +479,19 @@ onBeforeUnmount(() => {
 
     <div class="head">
       <h1>{{ isCreate ? '新增题目' : `编辑题目 #${problemId}` }}</h1>
+      <!-- 快速跳转题目 -->
+      <div v-if="!isCreate" class="quick-jump">
+        <label for="problem-id-input">跳转到题目：</label>
+        <input 
+          id="problem-id-input"
+          v-model="problemIdInput" 
+          type="number" 
+          min="1"
+          placeholder="输入题目ID"
+          @keyup.enter="goToProblem"
+        />
+        <button type="button" class="btn-sm" @click="goToProblem">跳转</button>
+      </div>
     </div>
 
     <p v-if="err" class="err">{{ err }}</p>
@@ -533,6 +608,23 @@ onBeforeUnmount(() => {
 
     <div v-if="!isCreate" class="card">
       <h3>题解</h3>
+      
+      <!-- 题目选择器 -->
+      <div class="problem-selector">
+        <label for="problem-select">选择题目：</label>
+        <select 
+          id="problem-select"
+          v-model="selectedProblemId" 
+          @change="onSelectProblemForSolution"
+        >
+          <option :value="null">-- 请选择题目 --</option>
+          <option v-for="p in problemList" :key="p.problemId" :value="p.problemId">
+            #{{ p.problemId }} - {{ p.title }} ({{ p.difficulty }})
+          </option>
+        </select>
+        <button type="button" class="btn-sm" @click="onSelectProblemForSolution">加载</button>
+      </div>
+      
       <table class="table">
         <thead>
           <tr>
@@ -865,5 +957,94 @@ h4 {
   width: 100%;
   margin-bottom: 8px;
   padding: 8px;
+}
+
+/* 快速跳转题目样式 */
+.quick-jump {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px 16px;
+  background: var(--lc-surface-2);
+  border-radius: 8px;
+  border: 1px solid var(--lc-border);
+}
+
+.quick-jump label {
+  font-size: 0.9rem;
+  color: var(--lc-text-muted);
+  font-weight: 600;
+}
+
+.quick-jump input {
+  width: 120px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-bg);
+  color: var(--lc-text);
+  font-size: 0.9rem;
+}
+
+.quick-jump input:focus {
+  outline: none;
+  border-color: var(--lc-accent);
+  box-shadow: 0 0 0 3px rgba(255, 161, 22, 0.1);
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--lc-accent);
+  background: var(--lc-accent);
+  color: #111;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-sm:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 161, 22, 0.3);
+}
+
+/* 题目选择器样式 */
+.problem-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--lc-surface-2);
+  border-radius: 8px;
+  border: 1px solid var(--lc-border);
+}
+
+.problem-selector label {
+  font-size: 0.9rem;
+  color: var(--lc-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.problem-selector select {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--lc-border);
+  background: var(--lc-bg);
+  color: var(--lc-text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.problem-selector select:focus {
+  outline: none;
+  border-color: var(--lc-accent);
+  box-shadow: 0 0 0 3px rgba(255, 161, 22, 0.1);
 }
 </style>

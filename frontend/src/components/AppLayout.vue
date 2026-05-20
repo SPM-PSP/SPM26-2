@@ -61,7 +61,7 @@ export default { name: 'AppLayout' }
         </nav>
         
         <!-- 中间的正方形播放按钮 -->
-        <button v-if="auth.isAdmin" class="nav-play-btn" @click="handlePlayClick" title="浏览编辑题目">
+        <button class="nav-play-btn" @click="handlePlayClick" title="浏览编辑题目">
           <span class="play-icon">▶</span>
         </button>
         

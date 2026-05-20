@@ -11,11 +11,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: '0.0.0.0',
-    // Deleted:allowedHosts: ['124rk4096yv62.vicp.fun'],
+    host: true,  // 使用 true 而不是 '0.0.0.0'，兼容性更好
+    allowedHosts: true,  // 使用 true 允许所有主机
     proxy: {
       '/api': {
-        // Deleted:target: 'https://124rk4096yv62.vicp.fun',
         target: 'http://localhost:8080',
         changeOrigin: true,
       },

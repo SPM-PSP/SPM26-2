@@ -42,3 +42,35 @@ export async function fetchSubmissionDetail(submissionId: number) {
   )
   return data
 }
+
+/**
+ * 更新用户信息
+ */
+export interface UpdateUserInfoParams {
+  nickname?: string
+  phone?: string
+}
+
+export async function updateUserInfo(params: UpdateUserInfoParams) {
+  const { data } = await http.put<ApiResult<null>>('/api/v1/user/info', params)
+  return data
+}
+
+/**
+ * 上传头像
+ */
+export async function uploadAvatar(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  const { data } = await http.post<ApiResult<{ avatarUrl: string; avatarSize: number; avatarType: string }>>(
+    '/api/v1/user/avatar/upload',
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  )
+  return data
+}

@@ -119,6 +119,97 @@ function handleTabKey(e: KeyboardEvent) {
   }
 }
 
+/**
+ * 处理括号自动补全和配对
+ */
+function handleBracketAutoComplete(e: KeyboardEvent, target: HTMLTextAreaElement) {
+  const brackets: Record<string, string> = {
+    '(': ')',
+    '[': ']',
+    '{': '}',
+    '"': '"',
+    "'": "'",
+    '`': '`',
+  }
+
+  const openBracket = e.key
+  const closeBracket = brackets[openBracket]
+
+  if (!closeBracket) return false
+
+  e.preventDefault()
+
+  const start = target.selectionStart
+  const end = target.selectionEnd
+  const value = target.value
+
+  // 插入配对括号
+  const newValue = value.substring(0, start) + openBracket + closeBracket + value.substring(end)
+  target.value = newValue
+
+  // 光标放在两个括号中间
+  target.selectionStart = target.selectionEnd = start + 1
+
+  return true
+}
+
+/**
+ * 处理在闭合括号前输入时，直接跳过而不是重复输入
+ */
+function handleSkipCloseBracket(e: KeyboardEvent, target: HTMLTextAreaElement): boolean {
+  const closeBrackets = [')', ']', '}', '"', "'", '`']
+  
+  if (!closeBrackets.includes(e.key)) return false
+
+  const start = target.selectionStart
+  const value = target.value
+
+  // 如果光标后面就是相同的闭合括号，则跳过它
+  if (value[start] === e.key) {
+    e.preventDefault()
+    target.selectionStart = target.selectionEnd = start + 1
+    return true
+  }
+
+  return false
+}
+
+/**
+ * 处理退格键删除配对括号
+ */
+function handleBackspaceWithBrackets(e: KeyboardEvent, target: HTMLTextAreaElement): boolean {
+  if (e.key !== 'Backspace') return false
+
+  const start = target.selectionStart
+  const end = target.selectionEnd
+  const value = target.value
+
+  // 只有当光标在配对括号中间且没有选中文本时才处理
+  if (start === end && start > 0) {
+    const beforeCursor = value[start - 1]
+    const afterCursor = value[start]
+
+    const bracketPairs: Record<string, string> = {
+      '(': ')',
+      '[': ']',
+      '{': '}',
+      '"': '"',
+      "'": "'",
+      '`': '`',
+    }
+
+    // 如果前后是配对的括号，则一起删除
+    if (bracketPairs[beforeCursor] === afterCursor) {
+      e.preventDefault()
+      target.value = value.substring(0, start - 1) + value.substring(start + 1)
+      target.selectionStart = target.selectionEnd = start - 1
+      return true
+    }
+  }
+
+  return false
+}
+
 function handleEnterKey(e: KeyboardEvent) {
   if (e.key === 'Enter') {
     e.preventDefault()
@@ -141,12 +232,76 @@ function handleEnterKey(e: KeyboardEvent) {
       extraIndent = '    '
     }
 
-    // 插入换行 + 当前缩进 + 额外缩进
-    const insertion = '\n' + currentIndent + extraIndent
-    target.value = value.substring(0, start) + insertion + value.substring(start)
+    // 检查光标后是否有闭合括号，如果有，需要特殊处理
+    const nextChar = value[start]
+    if (nextChar === '}' || nextChar === ')' || nextChar === ']') {
+      // 计算减少一级缩进后的位置
+      const reducedIndent = currentIndent.length >= 4 ? currentIndent.substring(4) : ''
+      
+      // 构建新内容：
+      // 1. 光标前的内容
+      // 2. 换行 + 当前缩进 + 额外缩进（新行，用于输入代码）
+      // 3. 换行 + 减少的缩进 + 闭合括号
+      // 4. 闭合括号后面的内容
+      const beforeCursor = value.substring(0, start)
+      const afterClosingBracket = value.substring(start + 1)
+      
+      // 注意：需要在第3行包含闭合括号本身
+      const newContent = beforeCursor + 
+                        '\n' + currentIndent + extraIndent + 
+                        '\n' + reducedIndent + nextChar + 
+                        afterClosingBracket
+      
+      target.value = newContent
+      
+      // 光标移动到中间的新行
+      const cursorPos = start + 1 + currentIndent.length + extraIndent.length
+      target.selectionStart = target.selectionEnd = cursorPos
+    } else {
+      // 普通情况：直接换行并保持缩进
+      const insertion = '\n' + currentIndent + extraIndent
+      target.value = value.substring(0, start) + insertion + value.substring(start)
+      
+      // 移动光标到新行
+      target.selectionStart = target.selectionEnd = start + insertion.length
+    }
+  }
+}
 
-    // 移动光标到新行
-    target.selectionStart = target.selectionEnd = start + insertion.length
+/**
+ * 统一的代码编辑器键盘事件处理
+ */
+function handleCodeEditorKeydown(e: KeyboardEvent) {
+  const target = e.target as HTMLTextAreaElement
+
+  // 1. 处理 Tab 键缩进
+  if (e.key === 'Tab') {
+    handleTabKey(e)
+    return
+  }
+
+  // 2. 处理括号自动补全（输入开括号时）
+  const openBrackets = ['(', '[', '{', '"', "'", '`']
+  if (openBrackets.includes(e.key)) {
+    if (handleBracketAutoComplete(e, target)) {
+      return
+    }
+  }
+
+  // 3. 处理跳过闭合括号
+  if (handleSkipCloseBracket(e, target)) {
+    return
+  }
+
+  // 4. 处理退格键删除配对括号
+  if (handleBackspaceWithBrackets(e, target)) {
+    return
+  }
+
+  // 5. 处理 Enter 键自动缩进
+  if (e.key === 'Enter') {
+    handleEnterKey(e)
+    return
   }
 }
 
@@ -247,8 +402,15 @@ async function submitAndJudge() {
 /** 运行 - 使用自定义输入输出进行测试 */
 async function runCode() {
   if (!detail.value) return
+  
+  // 验证测试输入和输出都必须填写
   if (!customInput.value.trim()) {
-    judgeErr.value = '请输入测试用例'
+    judgeErr.value = '请输入测试输入'
+    return
+  }
+  
+  if (!customOutput.value.trim()) {
+    judgeErr.value = '请输入测试输出（期望结果）'
     return
   }
 
@@ -440,8 +602,7 @@ function goSubmissionDetail() {
           v-model="code"
           class="editor"
           spellcheck="false"
-          @keydown="handleTabKey"
-          @keydown.enter="handleEnterKey"
+          @keydown="handleCodeEditorKeydown"
       />
 
       <div class="io-block">
