@@ -84,7 +84,10 @@ public class JudgeServiceImpl implements JudgeService {
 
             int timeLimit = request.getTimeLimit() != null ? request.getTimeLimit() : judgeConfig.getDefaultTimeLimit();
             String memoryLimit = request.getMemoryLimit() != null ? request.getMemoryLimit() : judgeConfig.getDefaultMemoryLimit();
-            log.info("时间限制: {}s, 内存限制: {}", timeLimit, memoryLimit);
+            
+            // 将毫秒转换为秒传递给判题脚本
+            int timeLimitSeconds = (int) Math.ceil(timeLimit / 1000.0);
+            log.info("时间限制: {}ms ({}s), 内存限制: {}", timeLimit, timeLimitSeconds, memoryLimit);
 
             // 将内存限制转换为 KB（用于传递给判题脚本）
             int memoryLimitKB = parseMemoryLimitToKB(memoryLimit);
@@ -112,7 +115,7 @@ public class JudgeServiceImpl implements JudgeService {
                     "-v", dockerScriptPath + ":/" + langConfig.getScriptFile() + ":ro",
                     "--entrypoint", "sh",
                     langConfig.getDockerImage(),
-                    "/" + langConfig.getScriptFile(), String.valueOf(timeLimit), String.valueOf(memoryLimitKB)
+                    "/" + langConfig.getScriptFile(), String.valueOf(timeLimitSeconds), String.valueOf(memoryLimitKB)
             };
 
             log.info("========== 执行 Docker 命令 ==========");

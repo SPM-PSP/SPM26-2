@@ -3,19 +3,23 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { analyzeCode, generateProblem } from '@/api/algorithm'
 import { adminAddProblem, adminAddTestCase } from '@/api/admin'
-import { fetchProblemList } from '@/api/problem'
+import { fetchProblemList, fetchCategories } from '@/api/problem'
 import PageBack from '@/components/PageBack.vue'
 import WaitingPanel from '@/components/lab/WaitingPanel.vue'
 import { useAiLabStore } from '@/stores/aiLab'
 import { useAuthStore } from '@/stores/auth'
-import type { ProblemGenerateResponse } from '@/types/api'
+import type { ProblemGenerateResponse, CategoryVO } from '@/types/api'
 import { difficultyToApi } from '@/utils/difficulty'
 
 const router = useRouter()
 const lab = useAiLabStore()
 const auth = useAuthStore()
 
-const plates = ['数组', '链表', '动态规划', '贪心', '字符串', '图论', '数学']
+// 从后端获取的分类列表
+const categories = ref<CategoryVO[]>([])
+const platesLoading = ref(false)
+
+// 图标映射（用于显示）
 const plateIcons: Record<string, string> = {
   数组: '▦',
   链表: '⛓',
@@ -29,7 +33,8 @@ const diffs = ['简单', '中等', '困难']
 const langs = ['C++', 'Java', 'Python']
 const langIcons: Record<string, string> = { 'C++': 'C+', Java: 'Jv', Python: 'Py' }
 
-const plate = ref(lab.plate || '数组')
+// 支持多选的板块
+const selectedPlates = ref<string[]>(lab.plates?.length ? [...lab.plates] : [])
 const difficulty = ref(lab.difficulty || '中等')
 const targetLanguage = ref(lab.targetLanguage || 'C++')
 const genLoading = ref(lab.isGenerating || false)
@@ -45,25 +50,20 @@ const anaOut = ref<{ plate?: string; complexity?: string; style?: string } | nul
 const saving = ref(false)
 const saveErr = ref('')
 
-const categoryMap: Record<string, string[]> = {
-  数组: ['数组'],
-  链表: ['链表'],
-  动态规划: ['动态规划'],
-  贪心: ['贪心'],
-  字符串: ['字符串'],
-  图论: ['图论'],
-  数学: ['数学'],
-}
 
-// 组件挂载时检查是否有正在进行的生成任务
+
+// 组件挂载时加载分类列表并检查是否有正在进行的生成任务
 onMounted(async () => {
+  // 加载分类列表
+  await loadCategories()
+  
   if (lab.isGenerating && lab.generationPromise) {
     genLoading.value = true
     try {
       const data = await lab.generationPromise
       generatedProblem.value = data
       lab.generatedProblem = data
-      lab.plate = plate.value
+      lab.plates = [...selectedPlates.value]
       lab.difficulty = difficulty.value
       lab.targetLanguage = targetLanguage.value
     } catch (e: unknown) {
@@ -77,7 +77,37 @@ onMounted(async () => {
   }
 })
 
+async function loadCategories() {
+  platesLoading.value = true
+  try {
+    const res = await fetchCategories()
+    if (res.code === 200) {
+      categories.value = res.data ?? []
+    }
+  } catch (e) {
+    console.error('加载分类失败:', e)
+  } finally {
+    platesLoading.value = false
+  }
+}
+
+function togglePlate(plateName: string) {
+  const index = selectedPlates.value.indexOf(plateName)
+  if (index > -1) {
+    // 如果已选中，则取消选中
+    selectedPlates.value.splice(index, 1)
+  } else {
+    // 如果未选中，则添加
+    selectedPlates.value.push(plateName)
+  }
+}
+
 async function onGenerate() {
+  if (!selectedPlates.value.length) {
+    genErr.value = '请至少选择一个算法板块'
+    return
+  }
+  
   genLoading.value = true
   genErr.value = ''
   generatedProblem.value = null
@@ -86,7 +116,7 @@ async function onGenerate() {
   
   // 创建生成任务，固定使用 C++ 语言
   const generatePromise = generateProblem({
-    plate: plate.value,
+    plates: selectedPlates.value,
     difficulty: difficulty.value,
     targetLanguage: 'C++', // 固定使用 C++
   })
@@ -99,7 +129,7 @@ async function onGenerate() {
     const data = await generatePromise
     generatedProblem.value = data
     lab.generatedProblem = data
-    lab.plate = plate.value
+    lab.plates = [...selectedPlates.value]
     lab.difficulty = difficulty.value
     lab.targetLanguage = 'C++'
   } catch (e: unknown) {
@@ -143,7 +173,7 @@ async function onSaveAndStart() {
     const addRes = await adminAddProblem({
       title,
       difficulty: difficultyToApi(difficulty.value),
-      categoryNames: categoryMap[plate.value] || [plate.value],
+      categoryNames: selectedPlates.value.length > 0 ? selectedPlates.value : ['其他'],
       description: generatedProblem.value.problemDesc,
       inputFormat: generatedProblem.value.inputFormat || '',
       outputFormat: generatedProblem.value.outputFormat || '',
@@ -261,19 +291,20 @@ export default { name: 'AiLabView' }
       </div>
 
       <div class="chip-section">
-        <p class="chip-label">算法板块</p>
-        <div class="chips">
+        <p class="chip-label">算法板块（可多选）</p>
+        <div v-if="platesLoading" class="muted">加载中...</div>
+        <div v-else class="chips">
           <button
-              v-for="p in plates"
-              :key="p"
+              v-for="cat in categories"
+              :key="cat.categoryId"
               type="button"
               class="chip"
-              :class="{ active: plate === p }"
+              :class="{ active: selectedPlates.includes(cat.categoryName) }"
               :disabled="genLoading"
-              @click="plate = p"
+              @click="togglePlate(cat.categoryName)"
           >
-            <span class="chip-ico">{{ plateIcons[p] }}</span>
-            {{ p }}
+            <span class="chip-ico">{{ plateIcons[cat.categoryName] || '📌' }}</span>
+            {{ cat.categoryName }}
           </button>
         </div>
       </div>
@@ -311,7 +342,7 @@ export default { name: 'AiLabView' }
         <div class="problem-header">
           <h3 class="problem-title">{{ generatedProblem.problemName }}</h3>
           <div class="problem-tags">
-            <span class="tag tag-plate">{{ plateIcons[plate] }} {{ plate }}</span>
+            <span v-for="p in selectedPlates" :key="p" class="tag tag-plate">{{ plateIcons[p] || '📌' }} {{ p }}</span>
             <span class="tag" :class="`tag-${difficulty}`">{{ difficulty }}</span>
             <span class="tag tag-lang">C++</span>
           </div>

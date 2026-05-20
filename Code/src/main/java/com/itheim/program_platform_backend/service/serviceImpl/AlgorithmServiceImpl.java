@@ -66,8 +66,11 @@ public class AlgorithmServiceImpl implements AlgorithmService {
 
     @Override
     public ProblemGenerateResponse generateProblem(ProblemGenerateRequest request) {
+        // 将多个板块用逗号连接，传递给AI
+        String platesStr = String.join("、", request.getPlates());
+        
         String prompt = String.format("""
-                请生成一道%s难度的%s算法题（目标语言：%s），要求输出结构化结果：
+                请生成一道%s难度的算法题，涉及以下算法知识点：%s（目标语言：%s），要求输出结构化结果：
                 1. 题目名称：简洁明了，符合算法题命名规范；
                 2. 题目描述：详细说明题目要求、输入约束、数据范围；
                 3. 样例输入：给出3个典型输入案例,要求第1个输入输出样例数量级在5以内，第2,3个在10-60之间（根据题目复杂度）；
@@ -85,7 +88,7 @@ public class AlgorithmServiceImpl implements AlgorithmService {
                 【样例输出3】：xxx
                 【输入格式】：xxx
                 【输出格式】：xxx
-                """, request.getDifficulty(), request.getPlate(), request.getTargetLanguage());
+                """, request.getDifficulty(), platesStr, request.getTargetLanguage());
 
         String llmResponse = volcLlmUtil.callLlm(prompt);
         log.info("题目生成响应：{}", llmResponse);
@@ -154,10 +157,12 @@ public class AlgorithmServiceImpl implements AlgorithmService {
         }
         log.info("测试用例保存成功，题目ID: {}，数量: {}", problemId, sampleInputs.size());
 
-        // 4. 添加默认分类（根据请求中的板块）
-        String categoryName = request.getPlate();
-        if (categoryName != null && !categoryName.isEmpty()) {
-            addProblemCategory(problemId, categoryName);
+        // 4. 添加默认分类（根据请求中的板块列表）
+        List<String> categoryNames = request.getPlates();
+        if (categoryNames != null && !categoryNames.isEmpty()) {
+            for (String categoryName : categoryNames) {
+                addProblemCategory(problemId, categoryName);
+            }
         }
     }
 

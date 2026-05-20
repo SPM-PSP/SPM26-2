@@ -2,7 +2,7 @@ import http from './http'
 import type { CodeAnalysisResponse, ProblemGenerateResponse } from '@/types/api'
 
 export async function generateProblem(payload: {
-  plate: string
+  plates: string[]
   difficulty: string
   targetLanguage: string
 }) {

@@ -66,7 +66,7 @@ elif [ $RUN_CODE -eq 137 ]; then
     fi
 
     # 方法2：如果运行时间远小于时间限制，但被 kill 了，很可能是内存超限
-    TIME_LIMIT_MS=$((TIME_LIMIT * 1000))
+    TIME_LIMIT_MS=$((TIME_LIMIT * 1000))  # TIME_LIMIT 是秒，转换为毫秒用于比较
     if [ $ELAPSED_MS -lt $((TIME_LIMIT_MS / 2)) ]; then
         echo "[MLE] 内存超限 (峰值内存: ${PEAK_MEMORY}KB, 用时: ${ELAPSED_MS}ms)"
         exit 138
