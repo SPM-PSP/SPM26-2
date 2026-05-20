@@ -43,5 +43,6 @@ public class AuthController {
         //退出登录后，销毁token
         authService.logout();
         return Result.success("退出登录成功");
+
     }
 }
