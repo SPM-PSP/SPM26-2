@@ -169,6 +169,9 @@ public class JudgeServiceImpl implements JudgeService {
                 }
             }
 
+            // 解析运行时间和内存
+            parseRuntimeAndMemory(logsDir, resp);
+
             log.info("========== 判题完成 ==========");
             return resp;
         } catch (JudgeException e) {
@@ -287,6 +290,37 @@ public class JudgeServiceImpl implements JudgeService {
         } catch (NumberFormatException e) {
             log.warn("内存限制格式解析失败: {}, 使用默认值 256MB", memoryLimit);
             return 256 * 1024;
+        }
+    }
+
+    /**
+     * 从判题脚本生成的日志文件中解析运行时间和内存
+     * 判题脚本会将运行时间(ms)写入 runtime_ms.txt，内存(KB)写入 memory_kb.txt
+     */
+    private void parseRuntimeAndMemory(String logsDir, JudgeResponse resp) {
+        try {
+            // 读取运行时间
+            String runtimeStr = FileOperationUtil.readFile(logsDir + "runtime_ms.txt");
+            if (runtimeStr != null && !runtimeStr.trim().isEmpty()) {
+                resp.setRunTime(Integer.parseInt(runtimeStr.trim()));
+                log.info("解析到运行时间: {} ms", resp.getRunTime());
+            }
+
+            // 读取内存使用
+            String memoryStr = FileOperationUtil.readFile(logsDir + "memory_kb.txt");
+            if (memoryStr != null && !memoryStr.trim().isEmpty()) {
+                resp.setMemory(Integer.parseInt(memoryStr.trim()));
+                log.info("解析到内存使用: {} KB", resp.getMemory());
+            }
+        } catch (Exception e) {
+            log.warn("解析运行时间和内存失败: {}", e.getMessage());
+            // 设置默认值
+            if (resp.getRunTime() == null) {
+                resp.setRunTime(0);
+            }
+            if (resp.getMemory() == null) {
+                resp.setMemory(0);
+            }
         }
     }
 

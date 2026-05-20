@@ -151,8 +151,16 @@ public class JudgeV1Controller {
         submission.setStatus(statusCode);
         submission.setPassCount(passCount);
         submission.setTotalCount(totalCount);
-        submission.setRunTime(0); // 可以从判题日志中解析
-        submission.setMemory(0);  // 可以从判题日志中解析
+        
+        // 从最后一个测试用例的判题结果中获取运行时间和内存
+        if (judgeResponse != null) {
+            submission.setRunTime(judgeResponse.getRunTime() != null ? judgeResponse.getRunTime() : 0);
+            submission.setMemory(judgeResponse.getMemory() != null ? judgeResponse.getMemory() : 0);
+            log.info("提交记录 - 运行时间: {}ms, 内存: {}KB", submission.getRunTime(), submission.getMemory());
+        } else {
+            submission.setRunTime(0);
+            submission.setMemory(0);
+        }
         
         // 构建详细错误信息
         String detailedErrorMsg = allErrors.toString();

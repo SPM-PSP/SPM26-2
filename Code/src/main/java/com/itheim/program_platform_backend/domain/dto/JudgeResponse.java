@@ -13,4 +13,8 @@ public class JudgeResponse {
     private String userOutput;    // 原始输出
     private String formattedAnswer; // 格式化后标准答案
     private String formattedOutput; // 格式化后用户输出
+    
+    // 运行时间和内存（从判题脚本日志中解析）
+    private Integer runTime;      // 运行时间 (ms)
+    private Integer memory;       // 内存使用 (KB)
 }

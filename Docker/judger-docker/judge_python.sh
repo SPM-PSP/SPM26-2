@@ -61,6 +61,10 @@ if [ -f /proc/self/status ]; then
     PEAK_MEMORY=$(grep VmPeak /proc/self/status 2>/dev/null | awk '{print $2}' || echo "0")
 fi
 
+# 将运行时间和内存写入专门的日志文件（供后端解析）
+echo "${ELAPSED_MS}" > /logs/runtime_ms.txt
+echo "${PEAK_MEMORY}" > /logs/memory_kb.txt
+
 # 判断退出原因
 if [ $RUN_CODE -eq 124 ]; then
     cp -rf /tmp/logs/* /logs/ 2>/dev/null
