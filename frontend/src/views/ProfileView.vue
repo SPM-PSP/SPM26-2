@@ -26,7 +26,6 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const avatarLoadError = ref(false)
 
 onMounted(async () => {
-  console.log('📄 ProfileView 组件挂载')
   await loadUserInfo()
 })
 
@@ -41,7 +40,6 @@ async function loadUserInfo() {
       return
     }
     info.value = res.data
-    console.log('用户信息加载成功，头像URL:', res.data?.avatar)
     // 初始化编辑表单
     editForm.value.nickname = res.data?.nickname || ''
     editForm.value.phone = res.data?.phone || ''
@@ -140,7 +138,6 @@ async function handleFileChange(event: Event) {
     }
     
     msg.value = '头像上传成功'
-    console.log('✅ 上传接口返回的URL:', res.data?.avatarUrl)
     
     // 先更新 auth store（用于导航栏立即显示）
     if (res.data) {
@@ -148,19 +145,16 @@ async function handleFileChange(event: Event) {
         ...auth.userPreview,
         avatar: res.data.avatarUrl,
       } as any)
-      console.log('✅ Auth store 已更新')
     }
     
     // 再重新加载用户信息（用于页面显示）
     await loadUserInfo()
-    console.log('✅ 用户信息重新加载完成，当前头像URL:', info.value?.avatar)
     
     // 强制刷新图片，清除浏览器缓存
     avatarLoadError.value = false
     await new Promise(resolve => setTimeout(resolve, 100))
   } catch (e: unknown) {
     err.value = e instanceof Error ? e.message : '上传失败'
-    console.error('❌ 头像上传失败:', e)
   } finally {
     uploading.value = false
     // 清空文件输入
@@ -172,16 +166,8 @@ async function handleFileChange(event: Event) {
 
 function handleImageError(event: Event) {
   const img = event.target as HTMLImageElement
-  console.error('❌ 头像图片加载失败')
-  console.error('   - URL:', img.src)
-  console.error('   - 是否有avatar字段:', !!info.value?.avatar)
-  console.error('   - avatarLoadError状态:', avatarLoadError.value)
-  
-  // 尝试直接在浏览器中打开这个URL
-  console.warn('👉 请复制上面的URL在新标签页中打开，检查是否能访问')
-  
+  console.error('头像加载失败，URL:', img.src)
   avatarLoadError.value = true
-  // 不设置 err.value，避免影响整个页面显示
 }
 </script>
 
@@ -288,23 +274,6 @@ function handleImageError(event: Event) {
       
       <!-- 消息提示 -->
       <div v-if="msg" class="msg-success">{{ msg }}</div>
-      
-      <!-- 调试信息（开发环境） -->
-      <div v-if="info?.avatar" class="debug-info">
-        <details>
-          <summary>🔍 调试信息（点击展开）</summary>
-          <div class="debug-content">
-            <p><strong>头像URL:</strong></p>
-            <code>{{ info.avatar }}</code>
-            <p><strong>Auth Store 头像:</strong></p>
-            <code>{{ auth.userPreview?.avatar || '无' }}</code>
-            <p><strong>加载错误状态:</strong> {{ avatarLoadError ? '是' : '否' }}</p>
-            <a :href="info.avatar" target="_blank" rel="noopener" class="btn-test-url">
-              🚀 在新标签页中打开图片
-            </a>
-          </div>
-        </details>
-      </div>
     </div>
   </div>
 </template>
@@ -562,66 +531,5 @@ function handleImageError(event: Event) {
   to {
     transform: rotate(360deg);
   }
-}
-
-/* 调试信息 */
-.debug-info {
-  margin-top: 16px;
-  padding: 12px;
-  background: rgba(255, 161, 22, 0.05);
-  border: 1px solid rgba(255, 161, 22, 0.2);
-  border-radius: 8px;
-  font-size: 0.85rem;
-}
-
-.debug-info summary {
-  cursor: pointer;
-  color: var(--lc-accent);
-  font-weight: 600;
-  user-select: none;
-}
-
-.debug-info summary:hover {
-  color: #ff6b4a;
-}
-
-.debug-content {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 161, 22, 0.2);
-}
-
-.debug-content p {
-  margin: 8px 0 4px;
-  color: var(--lc-text-muted);
-}
-
-.debug-content code {
-  display: block;
-  padding: 8px;
-  background: var(--lc-surface-2);
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  word-break: break-all;
-  color: var(--lc-text);
-}
-
-.btn-test-url {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 8px 16px;
-  background: var(--lc-accent);
-  color: #fff;
-  text-decoration: none;
-  border-radius: 6px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-test-url:hover {
-  background: #ff6b4a;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 161, 22, 0.3);
 }
 </style>
