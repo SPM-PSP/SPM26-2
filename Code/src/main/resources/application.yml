@@ -51,8 +51,8 @@ jwt:
 logging:
   level:
     root: OFF
-    com.itheim.program_platform_backend: DEBUG
-    com.itheim.program_platform_backend.mapper: DEBUG
+    com.itheim.program_platform_backend: OFF
+    com.itheim.program_platform_backend.mapper: OFF
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
 

@@ -12,9 +12,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @Slf4j
@@ -22,21 +24,40 @@ import java.util.UUID;
 public class JudgeServiceImpl implements JudgeService {
 
     private final JudgeConfig judgeConfig;
+    
+    // Docker 状态标志（启动时检查一次）
+    private final AtomicBoolean dockerAvailable = new AtomicBoolean(false);
+
+    /**
+     * 应用启动时检查 Docker 状态
+     */
+    @PostConstruct
+    public void init() {
+        log.info("========== 初始化判题服务 ==========");
+        if (checkDockerStatus()) {
+            dockerAvailable.set(true);
+            log.info("✅ Docker 服务正常，判题服务就绪");
+        } else {
+            dockerAvailable.set(false);
+            log.error("❌ Docker 服务未启动，判题功能不可用");
+            log.error("请先启动 Docker Desktop，然后重启应用");
+        }
+        log.info("====================================");
+    }
 
     @Override
     public JudgeResponse judge(JudgeRequest request) {
+        // 快速检查：如果启动时 Docker 就不可用，直接拒绝
+        if (!dockerAvailable.get()) {
+            throw new JudgeException("Docker服务未启动，请先启动Docker Desktop并重启应用");
+        }
+        
         log.info("========== 开始判题 ==========");
         String languageKey = resolveLanguageKey(request.getLanguage());
         log.info("语言: {} (resolved: {})", request.getLanguage(), languageKey);
         log.info("代码长度: {} 字符", request.getCode() != null ? request.getCode().length() : 0);
         log.info("输入: {}", request.getInput());
         log.info("答案: {}", request.getAnswer());
-
-        if (!checkDockerStatus()) {
-            log.error("Docker 服务未启动");
-            throw new JudgeException("Docker服务未启动，请先启动Docker Desktop");
-        }
-        log.info("Docker 服务正常");
 
         JudgeConfig.LanguageConfig langConfig = judgeConfig.getLanguages().get(languageKey);
 
@@ -61,6 +82,7 @@ public class JudgeServiceImpl implements JudgeService {
         log.info("日志目录: {}", logsDir);
 
         try {
+
             log.info("创建目录...");
             FileOperationUtil.createDirIfNotExists(dataDir);
             FileOperationUtil.createDirIfNotExists(logsDir);
@@ -327,13 +349,13 @@ public class JudgeServiceImpl implements JudgeService {
     @Override
     public boolean checkDockerStatus() {
         try {
-            log.info("检查 Docker 状态...");
+            log.debug("检查 Docker 状态...");
             CommandExecutor.CommandResult result = CommandExecutor.execute(new String[]{"docker", "info"}, 5);
             boolean isRunning = result.exitCode() == 0;
-            log.info("Docker 状态: {}", isRunning ? "正常运行" : "未运行");
+            log.debug("Docker 状态: {}", isRunning ? "正常运行" : "未运行");
             return isRunning;
         } catch (Exception e) {
-            log.error("Docker状态检查失败", e);
+            log.warn("Docker状态检查失败: {}", e.getMessage());
             return false;
         }
     }
