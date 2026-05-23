@@ -35,4 +35,14 @@ public interface SubmissionMapper {
      * 统计题目通过的用户数（去重，status=0表示通过）
      */
     Integer countDistinctAcceptedUsersByProblemId(@Param("problemId") Long problemId);
+
+    /**
+     * 根据ID查询提交记录
+     */
+    Submission selectSubmissionById(@Param("id") Long id);
+
+    /**
+     * 更新提交记录
+     */
+    int updateSubmission(Submission submission);
 }

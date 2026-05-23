@@ -12,6 +12,7 @@ import com.itheim.program_platform_backend.enums.JudgeResultEnum;
 import com.itheim.program_platform_backend.mapper.AdminMapper;
 import com.itheim.program_platform_backend.mapper.ProblemMapper;
 import com.itheim.program_platform_backend.mapper.SubmissionMapper;
+import com.itheim.program_platform_backend.service.JudgeResultCacheService;
 import com.itheim.program_platform_backend.service.JudgeService;
 import com.itheim.program_platform_backend.utils.UserContext;
 import io.swagger.annotations.Api;
@@ -19,10 +20,8 @@ import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.io.BufferedReader;
@@ -36,7 +35,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @Slf4j
@@ -50,13 +51,14 @@ public class JudgeV1Controller {
     private final ProblemMapper problemMapper;
     private final AdminMapper adminMapper;
     private final SubmissionMapper submissionMapper;
+    private final JudgeResultCacheService resultCacheService;
 
     @Value("${file-storage.test-case-root:src/main/resources/testcases/}")
     private String testCaseRoot;
 
-    @ApiOperation("提交代码并触发评测（需要登录）")
+    @ApiOperation("提交代码并触发评测（需要登录）- 异步模式")
     @PostMapping("/submit_to_back")
-    public Result<JudgeResponseVO> submitToBack(@Valid @RequestBody SubmitToBackRequest request) {
+    public Result<Map<String, Object>> submitToBack(@Valid @RequestBody SubmitToBackRequest request) {
         Long userId = UserContext.getCurrentUserId();
         log.info("用户 {} 提交题目 {} 的代码，语言: {}", userId, request.getProblemId(), request.getLanguage());
 
@@ -74,126 +76,40 @@ public class JudgeV1Controller {
 
         log.info("题目 {} 共有 {} 个测试用例", request.getProblemId(), testCases.size());
 
-        int passCount = 0;
-        int totalCount = testCases.size();
-        JudgeResponse judgeResponse = null;
-        StringBuilder allErrors = new StringBuilder();
-        boolean hasError = false;
-
-        // 遍历所有测试用例进行判题
-        for (int i = 0; i < testCases.size(); i++) {
-            ProblemTestCase testCase = testCases.get(i);
-            log.info("正在判题: 测试用例 {}/{} (ID: {})", i + 1, totalCount, testCase.getId());
-
-            String input = readTestCaseContent(testCase.getInputUrl());
-            String answer = readTestCaseContent(testCase.getOutputUrl());
-
-            if (input == null || answer == null) {
-                log.error("读取测试用例 {} 失败", i + 1);
-                continue;
-            }
-
-            JudgeRequest judgeRequest = new JudgeRequest();
-            judgeRequest.setCode(request.getCode());
-            judgeRequest.setLanguage(request.getLanguage());
-            judgeRequest.setInput(input);
-            judgeRequest.setAnswer(answer);
-            judgeRequest.setTimeLimit(problem.getTimeLimit());
-            judgeRequest.setMemoryLimit(String.valueOf(problem.getMemoryLimit()));
-
-            judgeResponse = judgeService.judge(judgeRequest);
-
-            // 判断是否通过
-            if ("AC".equals(judgeResponse.getStatus())) {
-                passCount++;
-                log.info("测试用例 {}/{} 通过", i + 1, totalCount);
-            } else {
-                hasError = true;
-                log.info("测试用例 {}/{} 失败: {}", i + 1, totalCount, judgeResponse.getStatus());
-                
-                // 收集错误信息
-                allErrors.append(String.format("\n\n=== 测试用例 %d/%d ===\n", i + 1, totalCount));
-                allErrors.append("结果: ").append(judgeResponse.getStatus()).append("\n");
-                if (judgeResponse.getCompileLog() != null && !judgeResponse.getCompileLog().isEmpty()) {
-                    allErrors.append("编译错误:\n").append(judgeResponse.getCompileLog()).append("\n");
-                }
-                if (judgeResponse.getRuntimeLog() != null && !judgeResponse.getRuntimeLog().isEmpty()) {
-                    allErrors.append("运行时错误:\n").append(judgeResponse.getRuntimeLog()).append("\n");
-                }
-                if (judgeResponse.getDiffLog() != null && !judgeResponse.getDiffLog().isEmpty()) {
-                    allErrors.append("答案差异:\n").append(judgeResponse.getDiffLog()).append("\n");
-                }
-                if (judgeResponse.getUserOutput() != null && !judgeResponse.getUserOutput().isEmpty()) {
-                    allErrors.append("你的输出:\n").append(judgeResponse.getUserOutput()).append("\n");
-                }
-                
-                // 如果有编译错误或运行时错误，直接停止后续测试
-                if ("CE".equals(judgeResponse.getStatus()) || "RE".equals(judgeResponse.getStatus())) {
-                    log.info("编译错误或运行时错误，停止后续测试用例");
-                    break;
-                }
-            }
-        }
-
-        log.info("判题完成: userId={}, problemId={}, 通过数={}, 总数={}", userId, request.getProblemId(), passCount, totalCount);
-
-        // 将判题结果转换为提交记录状态码
-        // 如果全部通过，则为 AC；否则根据最后一个失败的用例状态决定
-        Integer statusCode = hasError ? convertStatusToCode(judgeResponse.getStatus()) : 0;
-
-        // 创建提交记录
+        // 先创建提交记录（状态为"判题中"）
         Submission submission = new Submission();
         submission.setUserId(userId);
         submission.setProblemId(request.getProblemId());
         submission.setProblemTitle(problem.getTitle());
         submission.setLanguage(request.getLanguage());
         submission.setCode(request.getCode());
-        submission.setStatus(statusCode);
-        submission.setPassCount(passCount);
-        submission.setTotalCount(totalCount);
-        
-        // 从最后一个测试用例的判题结果中获取运行时间和内存
-        if (judgeResponse != null) {
-            submission.setRunTime(judgeResponse.getRunTime() != null ? judgeResponse.getRunTime() : 0);
-            submission.setMemory(judgeResponse.getMemory() != null ? judgeResponse.getMemory() : 0);
-            log.info("提交记录 - 运行时间: {}ms, 内存: {}KB", submission.getRunTime(), submission.getMemory());
-        } else {
-            submission.setRunTime(0);
-            submission.setMemory(0);
-        }
-        
-        // 构建详细错误信息
-        String detailedErrorMsg = allErrors.toString();
-        if (statusCode == 0 && detailedErrorMsg.isEmpty()) {
-            detailedErrorMsg = "通过所有测试用例";
-        }
-        submission.setErrorMsg(detailedErrorMsg);
+        submission.setStatus(-1); // -1 表示判题中
+        submission.setPassCount(0);
+        submission.setTotalCount(testCases.size());
+        submission.setRunTime(0);
+        submission.setMemory(0);
+        submission.setErrorMsg("判题中...");
         submission.setSubmitTime(LocalDateTime.now());
         submission.setCreateTime(LocalDateTime.now());
 
-        // 插入提交记录到数据库
         try {
             submissionMapper.insertSubmission(submission);
-            log.info("提交记录插入成功: submissionId={}", submission.getId());
-            
-            // 更新题目通过率
-            updateProblemPassRate(request.getProblemId());
+            log.info("提交记录创建成功: submissionId={}", submission.getId());
         } catch (Exception e) {
-            log.error("插入提交记录失败", e);
+            log.error("创建提交记录失败", e);
+            return new Result<>(500, "提交失败", null);
         }
 
-        // 构建返回给前端的响应
-        JudgeResponseVO responseVO = new JudgeResponseVO();
-        responseVO.setSubmissionId(submission.getId());
-        responseVO.setRunTime(submission.getRunTime());
-        responseVO.setMemory(submission.getMemory());
-        responseVO.setErrorMsg(detailedErrorMsg);
-        responseVO.setSubmitTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        responseVO.setResult(statusCode);
-        responseVO.setPassCount(passCount);
-        responseVO.setTotalCount(totalCount);
+        // 异步执行判题任务
+        asyncJudgeTask(submission.getId(), request, problem, testCases);
 
-        return Result.success(responseVO);
+        // 立即返回 submissionId
+        Map<String, Object> response = new HashMap<>();
+        response.put("submissionId", submission.getId());
+        response.put("message", "提交成功，正在判题");
+        response.put("status", "PENDING");
+
+        return Result.success(response);
     }
 
     /**
@@ -343,5 +259,163 @@ public class JudgeV1Controller {
 
         byte[] bytes = Files.readAllBytes(filePath);
         return new String(bytes, StandardCharsets.UTF_8).trim();
+    }
+
+    /**
+     * 异步判题任务
+     * 在后台线程池中执行，不阻塞 HTTP 请求
+     */
+    @Async("judgeTaskExecutor")
+    public void asyncJudgeTask(Long submissionId, SubmitToBackRequest request, 
+                               Problem problem, List<ProblemTestCase> testCases) {
+        log.info("开始异步判题: submissionId={}", submissionId);
+        
+        int passCount = 0;
+        int totalCount = testCases.size();
+        JudgeResponse judgeResponse = null;
+        StringBuilder allErrors = new StringBuilder();
+        boolean hasError = false;
+
+        try {
+            // 遍历所有测试用例进行判题
+            for (int i = 0; i < testCases.size(); i++) {
+                ProblemTestCase testCase = testCases.get(i);
+                log.info("正在判题: submissionId={}, 测试用例 {}/{}", submissionId, i + 1, totalCount);
+
+                String input = readTestCaseContent(testCase.getInputUrl());
+                String answer = readTestCaseContent(testCase.getOutputUrl());
+
+                if (input == null || answer == null) {
+                    log.error("读取测试用例 {} 失败", i + 1);
+                    continue;
+                }
+
+                JudgeRequest judgeRequest = new JudgeRequest();
+                judgeRequest.setCode(request.getCode());
+                judgeRequest.setLanguage(request.getLanguage());
+                judgeRequest.setInput(input);
+                judgeRequest.setAnswer(answer);
+                judgeRequest.setTimeLimit(problem.getTimeLimit());
+                judgeRequest.setMemoryLimit(String.valueOf(problem.getMemoryLimit()));
+
+                judgeResponse = judgeService.judge(judgeRequest);
+
+                // 判断是否通过
+                if ("AC".equals(judgeResponse.getStatus())) {
+                    passCount++;
+                    log.info("测试用例 {}/{} 通过", i + 1, totalCount);
+                } else {
+                    hasError = true;
+                    log.info("测试用例 {}/{} 失败: {}", i + 1, totalCount, judgeResponse.getStatus());
+                    
+                    allErrors.append(String.format("\n\n=== 测试用例 %d/%d ===\n", i + 1, totalCount));
+                    allErrors.append("结果: ").append(judgeResponse.getStatus()).append("\n");
+                    if (judgeResponse.getCompileLog() != null && !judgeResponse.getCompileLog().isEmpty()) {
+                        allErrors.append("编译错误:\n").append(judgeResponse.getCompileLog()).append("\n");
+                    }
+                    if (judgeResponse.getRuntimeLog() != null && !judgeResponse.getRuntimeLog().isEmpty()) {
+                        allErrors.append("运行时错误:\n").append(judgeResponse.getRuntimeLog()).append("\n");
+                    }
+                    if (judgeResponse.getDiffLog() != null && !judgeResponse.getDiffLog().isEmpty()) {
+                        allErrors.append("答案差异:\n").append(judgeResponse.getDiffLog()).append("\n");
+                    }
+                    if (judgeResponse.getUserOutput() != null && !judgeResponse.getUserOutput().isEmpty()) {
+                        allErrors.append("你的输出:\n").append(judgeResponse.getUserOutput()).append("\n");
+                    }
+                    
+                    if ("CE".equals(judgeResponse.getStatus()) || "RE".equals(judgeResponse.getStatus())) {
+                        log.info("编译错误或运行时错误，停止后续测试用例");
+                        break;
+                    }
+                }
+            }
+
+            log.info("判题完成: submissionId={}, 通过数={}, 总数={}", submissionId, passCount, totalCount);
+
+            Integer statusCode = hasError ? convertStatusToCode(judgeResponse.getStatus()) : 0;
+
+            // 更新提交记录
+            Submission submission = new Submission();
+            submission.setId(submissionId);
+            submission.setStatus(statusCode);
+            submission.setPassCount(passCount);
+            submission.setTotalCount(totalCount);
+            
+            if (judgeResponse != null) {
+                submission.setRunTime(judgeResponse.getRunTime() != null ? judgeResponse.getRunTime() : 0);
+                submission.setMemory(judgeResponse.getMemory() != null ? judgeResponse.getMemory() : 0);
+            }
+            
+            String detailedErrorMsg = allErrors.toString();
+            if (statusCode == 0 && detailedErrorMsg.isEmpty()) {
+                detailedErrorMsg = "通过所有测试用例";
+            }
+            submission.setErrorMsg(detailedErrorMsg);
+
+            submissionMapper.updateSubmission(submission);
+            log.info("提交记录更新成功: submissionId={}, status={}", submissionId, statusCode);
+            
+            // 更新题目通过率
+            updateProblemPassRate(request.getProblemId());
+
+            // 构建响应对象并缓存
+            JudgeResponseVO responseVO = new JudgeResponseVO();
+            responseVO.setSubmissionId(submissionId);
+            responseVO.setRunTime(submission.getRunTime());
+            responseVO.setMemory(submission.getMemory());
+            responseVO.setErrorMsg(detailedErrorMsg);
+            responseVO.setSubmitTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            responseVO.setResult(statusCode);
+            responseVO.setPassCount(passCount);
+            responseVO.setTotalCount(totalCount);
+
+            resultCacheService.saveResult(submissionId, responseVO);
+            resultCacheService.updateStatus(submissionId, "COMPLETED");
+
+        } catch (Exception e) {
+            log.error("异步判题失败: submissionId={}", submissionId, e);
+            
+            // 更新为系统错误状态
+            Submission submission = new Submission();
+            submission.setId(submissionId);
+            submission.setStatus(-2); // -2 表示系统错误
+            submission.setErrorMsg("判题系统异常: " + e.getMessage());
+            submissionMapper.updateSubmission(submission);
+            
+            resultCacheService.updateStatus(submissionId, "FAILED");
+        }
+    }
+
+    @ApiOperation("查询判题结果")
+    @GetMapping("/result/{submissionId}")
+    public Result<JudgeResponseVO> getJudgeResult(@PathVariable Long submissionId) {
+        // 先从缓存中查询
+        JudgeResponseVO result = resultCacheService.getResult(submissionId);
+        if (result != null) {
+            return Result.success(result);
+        }
+        
+        // 如果缓存中没有，从数据库查询
+        Submission submission = submissionMapper.selectSubmissionById(submissionId);
+        if (submission == null) {
+            return new Result<>(404, "提交记录不存在", null);
+        }
+        
+        if (submission.getStatus() == -1) {
+            return new Result<>(200, "判题中", null);
+        }
+        
+        // 构建响应
+        JudgeResponseVO responseVO = new JudgeResponseVO();
+        responseVO.setSubmissionId(submission.getId());
+        responseVO.setRunTime(submission.getRunTime());
+        responseVO.setMemory(submission.getMemory());
+        responseVO.setErrorMsg(submission.getErrorMsg());
+        responseVO.setSubmitTime(submission.getSubmitTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        responseVO.setResult(submission.getStatus());
+        responseVO.setPassCount(submission.getPassCount());
+        responseVO.setTotalCount(submission.getTotalCount());
+        
+        return Result.success(responseVO);
     }
 }

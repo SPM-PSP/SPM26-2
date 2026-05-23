@@ -103,4 +103,39 @@
           AND status = 0
     </select>
 
+    <!-- 根据ID查询提交记录 -->
+    <select id="selectSubmissionById" resultType="com.itheim.program_platform_backend.domain.po.Submission">
+        SELECT
+            id,
+            user_id AS userId,
+            problem_id AS problemId,
+            problem_title AS problemTitle,
+            language,
+            code,
+            status,
+            pass_count AS passCount,
+            total_count AS totalCount,
+            run_time AS runTime,
+            memory,
+            error_msg AS errorMsg,
+            submit_time AS submitTime,
+            create_time AS createTime
+        FROM submission
+        WHERE id = #{id}
+    </select>
+
+    <!-- 更新提交记录 -->
+    <update id="updateSubmission" parameterType="com.itheim.program_platform_backend.domain.po.Submission">
+        UPDATE submission
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="passCount != null">pass_count = #{passCount},</if>
+            <if test="totalCount != null">total_count = #{totalCount},</if>
+            <if test="runTime != null">run_time = #{runTime},</if>
+            <if test="memory != null">memory = #{memory},</if>
+            <if test="errorMsg != null">error_msg = #{errorMsg},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
 </mapper>
