@@ -6,16 +6,22 @@ import com.itheim.program_platform_backend.domain.dto.JudgeResponse;
 import com.itheim.program_platform_backend.enums.JudgeResultEnum;
 import com.itheim.program_platform_backend.exception.JudgeException;
 import com.itheim.program_platform_backend.service.JudgeService;
+import com.itheim.program_platform_backend.service.ResourceMonitorService;
 import com.itheim.program_platform_backend.utils.CommandExecutor;
+import com.itheim.program_platform_backend.utils.DockerResourceCleaner;
 import com.itheim.program_platform_backend.utils.FileOperationUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import java.io.File;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -24,33 +30,66 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class JudgeServiceImpl implements JudgeService {
 
     private final JudgeConfig judgeConfig;
+    private final ResourceMonitorService resourceMonitorService;
     
-    // Docker 状态标志（启动时检查一次）
+    // Docker 状态标志（定时更新）
     private final AtomicBoolean dockerAvailable = new AtomicBoolean(false);
+    
+    // 定时检查 Docker 状态的调度器
+    private final ScheduledExecutorService dockerStatusScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "docker-status-checker");
+        t.setDaemon(true);
+        return t;
+    });
 
     /**
-     * 应用启动时检查 Docker 状态
+     * 应用启动时检查 Docker 状态并启动定时检查任务
      */
     @PostConstruct
     public void init() {
         log.info("========== 初始化判题服务 ==========");
-        if (checkDockerStatus()) {
-            dockerAvailable.set(true);
-            log.info("✅ Docker 服务正常，判题服务就绪");
-        } else {
-            dockerAvailable.set(false);
-            log.error("❌ Docker 服务未启动，判题功能不可用");
-            log.error("请先启动 Docker Desktop，然后重启应用");
-        }
+        
+        // 首次检查
+        updateDockerStatus();
+        
+        // 启动定时检查任务，每10秒检查一次
+        dockerStatusScheduler.scheduleAtFixedRate(
+            this::updateDockerStatus,
+            10,  // 首次延迟10秒
+            10,  // 每隔10秒检查一次
+            TimeUnit.SECONDS
+        );
+        
+        log.info("✅ Docker 状态定时检查任务已启动（每10秒检查一次）");
         log.info("====================================");
+    }
+    
+    /**
+     * 更新 Docker 状态
+     */
+    private void updateDockerStatus() {
+        boolean status = checkDockerStatus();
+        boolean previousStatus = dockerAvailable.getAndSet(status);
+        
+        // 只在状态变化时打印日志
+        if (status != previousStatus) {
+            if (status) {
+                log.info("✅ Docker 服务已启动");
+            } else {
+                log.warn("⚠️ Docker 服务未启动或已停止");
+            }
+        }
     }
 
     @Override
     public JudgeResponse judge(JudgeRequest request) {
-        // 快速检查：如果启动时 Docker 就不可用，直接拒绝
+        // 使用定时检查的 Docker 状态（每10秒更新一次）
         if (!dockerAvailable.get()) {
-            throw new JudgeException("Docker服务未启动，请先启动Docker Desktop并重启应用");
+            throw new JudgeException("Docker服务未启动，请先启动Docker Desktop");
         }
+        
+        // 检查系统资源使用情况，如果过高则进行清理
+        checkAndCleanupResources();
         
         log.info("========== 开始判题 ==========");
         String languageKey = resolveLanguageKey(request.getLanguage());
@@ -118,7 +157,14 @@ public class JudgeServiceImpl implements JudgeService {
             // Docker 容器使用固定的较大内存上限，确保编译能通过
             // 真正的内存限制由判题脚本中的 ulimit 控制
             String dockerMemoryLimit = "512m";
+            
+            // CPU 配额优化：降低单容器CPU限制以提升并发能力
+            // 0.5 CPU = 允许使用 50% 的单核性能，适合 IO 密集型判题任务
+            // 可根据实际负载调整：0.25(更高并发) ~ 1.0(更快单任务)
+            String dockerCpus = "0.5";
+            
             log.info("Docker 容器内存限制: {} (编译用)", dockerMemoryLimit);
+            log.info("Docker 容器 CPU 限制: {} 核", dockerCpus);
             log.info("程序运行内存限制: {} KB (ulimit 控制)", memoryLimitKB);
 
             String dockerDataPath = FileOperationUtil.toDockerPath(dataDir);
@@ -129,9 +175,11 @@ public class JudgeServiceImpl implements JudgeService {
                     "docker", "run", "--rm",
                     "--network", "none",
                     "--cap-drop=ALL",
-                    "--cpus", "1",
+                    "--cpus", dockerCpus,  // 使用动态 CPU 配额
                     "--memory", dockerMemoryLimit,
                     "--memory-swap", dockerMemoryLimit,
+                    "--label", "judge-task=" + taskId,
+                    "--label", "judge-type=code-evaluation",
                     "-v", dockerDataPath + ":/data:ro",
                     "-v", dockerLogsPath + ":/logs:rw",
                     "-v", dockerScriptPath + ":/" + langConfig.getScriptFile() + ":ro",
@@ -203,6 +251,7 @@ public class JudgeServiceImpl implements JudgeService {
             log.error("判题未知异常", e);
             throw new JudgeException("判题系统异常: " + e.getMessage(), e);
         } finally {
+            // 确保清理临时目录
             if (!judgeConfig.isKeepTempFiles()) {
                 try {
                     log.info("清理临时目录: {}", taskRoot);
@@ -211,6 +260,22 @@ public class JudgeServiceImpl implements JudgeService {
                 } catch (Exception e) {
                     log.error("清理临时目录失败: {}", taskRoot, e);
                 }
+            }
+            
+            // 额外确保Docker容器被清理（防止--rm参数失效）
+            try {
+                // 检查是否有残留的容器（通过标签或名称匹配）
+                String[] checkCmd = {"docker", "ps", "-a", "--filter", "label=judge-task=" + taskId, "--format", "{{.ID}}"};
+                CommandExecutor.CommandResult checkResult = CommandExecutor.execute(checkCmd, 10);
+                if (checkResult.exitCode() == 0 && !checkResult.stdout().trim().isEmpty()) {
+                    String containerId = checkResult.stdout().trim();
+                    log.warn("发现残留的Docker容器: {}, 强制清理", containerId);
+                    String[] rmCmd = {"docker", "rm", "-f", containerId};
+                    CommandExecutor.execute(rmCmd, 10);
+                    log.info("残留容器已清理: {}", containerId);
+                }
+            } catch (Exception e) {
+                log.warn("检查/清理残留Docker容器时发生异常: {}", e.getMessage());
             }
         }
     }
@@ -357,6 +422,46 @@ public class JudgeServiceImpl implements JudgeService {
         } catch (Exception e) {
             log.warn("Docker状态检查失败: {}", e.getMessage());
             return false;
+        }
+    }
+    
+    /**
+     * 检查系统资源使用情况，如果过高则进行清理
+     */
+    private void checkAndCleanupResources() {
+        try {
+            // 检查资源使用情况（CPU和内存超过80%则认为过高）
+            if (resourceMonitorService.isResourceUsageHigh(80.0, 80.0)) {
+                log.warn("检测到系统资源使用过高，执行Docker资源清理...");
+                DockerResourceCleaner.performFullCleanup();
+                log.info("Docker资源清理完成，继续判题任务");
+                
+                // 记录清理后的资源使用情况
+                resourceMonitorService.logResourceUsage();
+            }
+        } catch (Exception e) {
+            log.error("资源检查和清理过程中发生异常，但不影响判题: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 应用关闭时停止定时检查任务
+     */
+    @PreDestroy
+    public void destroy() {
+        log.info("正在关闭 Docker 状态定时检查任务...");
+        dockerStatusScheduler.shutdown();
+        try {
+            if (!dockerStatusScheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                dockerStatusScheduler.shutdownNow();
+                log.warn("强制关闭 Docker 状态检查任务");
+            } else {
+                log.info("Docker 状态检查任务已优雅关闭");
+            }
+        } catch (InterruptedException e) {
+            dockerStatusScheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+            log.warn("关闭 Docker 状态检查任务时被中断");
         }
     }
 }
