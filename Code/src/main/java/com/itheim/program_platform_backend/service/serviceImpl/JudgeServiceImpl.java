@@ -52,15 +52,15 @@ public class JudgeServiceImpl implements JudgeService {
         // 首次检查
         updateDockerStatus();
         
-        // 启动定时检查任务，每10秒检查一次
+        // 启动定时检查任务，每3秒检查一次（提高检测频率，减少误判）
         dockerStatusScheduler.scheduleAtFixedRate(
             this::updateDockerStatus,
-            10,  // 首次延迟10秒
-            10,  // 每隔10秒检查一次
+            3,   // 首次延迟3秒
+            3,   // 每隔3秒检查一次（原10秒，缩短以提高响应速度）
             TimeUnit.SECONDS
         );
         
-        log.info("✅ Docker 状态定时检查任务已启动（每10秒检查一次）");
+        log.info("✅ Docker 状态定时检查任务已启动（每3秒检查一次，使用轻量级 docker version 命令）");
         log.info("====================================");
     }
     
@@ -83,8 +83,32 @@ public class JudgeServiceImpl implements JudgeService {
 
     @Override
     public JudgeResponse judge(JudgeRequest request) {
-        // 使用定时检查的 Docker 状态（每10秒更新一次）
-        if (!dockerAvailable.get()) {
+        // 使用定时检查的 Docker 状态（每3秒更新一次）
+        // 高并发优化：如果检测到 Docker 不可用，进行短暂等待后重试（最多3次）
+        boolean dockerReady = dockerAvailable.get();
+        if (!dockerReady) {
+            log.warn("Docker 状态标志为 false，尝试重新检查...");
+            // 立即重新检查一次，避免因为定时检查延迟导致的误判
+            dockerReady = checkDockerStatus();
+            if (dockerReady) {
+                log.info("✅ Docker 重新检查通过，继续判题");
+                dockerAvailable.set(true); // 更新标志位
+            } else {
+                // 仍然失败，等待1秒后再次尝试
+                try {
+                    Thread.sleep(1000);
+                    dockerReady = checkDockerStatus();
+                    if (dockerReady) {
+                        log.info("✅ Docker 重试成功，继续判题");
+                        dockerAvailable.set(true);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        
+        if (!dockerReady) {
             throw new JudgeException("Docker服务未启动，请先启动Docker Desktop");
         }
         
@@ -262,21 +286,12 @@ public class JudgeServiceImpl implements JudgeService {
                 }
             }
             
-            // 额外确保Docker容器被清理（防止--rm参数失效）
-            try {
-                // 检查是否有残留的容器（通过标签或名称匹配）
-                String[] checkCmd = {"docker", "ps", "-a", "--filter", "label=judge-task=" + taskId, "--format", "{{.ID}}"};
-                CommandExecutor.CommandResult checkResult = CommandExecutor.execute(checkCmd, 10);
-                if (checkResult.exitCode() == 0 && !checkResult.stdout().trim().isEmpty()) {
-                    String containerId = checkResult.stdout().trim();
-                    log.warn("发现残留的Docker容器: {}, 强制清理", containerId);
-                    String[] rmCmd = {"docker", "rm", "-f", containerId};
-                    CommandExecutor.execute(rmCmd, 10);
-                    log.info("残留容器已清理: {}", containerId);
-                }
-            } catch (Exception e) {
-                log.warn("检查/清理残留Docker容器时发生异常: {}", e.getMessage());
-            }
+            // 注意：不再手动删除 Docker 容器
+            // 原因：
+            // 1. 已使用 --rm 参数，容器会自动清理
+            // 2. 高并发下手动删除会与 --rm 产生竞态条件
+            // 3. 错误信息："container is marked for removal and cannot be started"
+            // 4. 定时任务（每10分钟）会清理残留容器作为兜底
         }
     }
 
@@ -415,12 +430,15 @@ public class JudgeServiceImpl implements JudgeService {
     public boolean checkDockerStatus() {
         try {
             log.debug("检查 Docker 状态...");
-            CommandExecutor.CommandResult result = CommandExecutor.execute(new String[]{"docker", "info"}, 5);
+            // 使用 docker version 替代 docker info，更轻量快速（快5-10倍）
+            CommandExecutor.CommandResult result = CommandExecutor.execute(new String[]{"docker", "version", "--format", "{{.Server.Version}}"}, 3);
             boolean isRunning = result.exitCode() == 0;
-            log.debug("Docker 状态: {}", isRunning ? "正常运行" : "未运行");
+            if (!isRunning) {
+                log.warn("Docker 状态检查失败，退出码: {}, 错误: {}", result.exitCode(), result.stderr());
+            }
             return isRunning;
         } catch (Exception e) {
-            log.warn("Docker状态检查失败: {}", e.getMessage());
+            log.warn("Docker状态检查异常: {}", e.getMessage());
             return false;
         }
     }

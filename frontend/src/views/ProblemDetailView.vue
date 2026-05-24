@@ -377,6 +377,11 @@ async function submitAndJudge() {
   judgeErr.value = ''
   judgeResult.value = null
   submitApiMessage.value = ''
+  
+  let submissionId: number | null = null
+  let pollCount = 0
+  const maxPollCount = 60 // 最多轮询60次（2分钟）
+  
   try {
     const res = await judgeSubmit({
       problemId: problemId.value,
@@ -384,17 +389,62 @@ async function submitAndJudge() {
       code: code.value,
     })
 
-    // 后端现在直接返回 JudgeSubmitResult 格式的数据
+    // 后端返回的是 { submissionId, message, status }，立即返回
     if (res.code !== 200 || !res.data) {
       judgeErr.value = res.message || '提交失败'
       return
     }
 
-    judgeResult.value = res.data
-    submitApiMessage.value = '提交成功'
+    submissionId = res.data.submissionId
+    submitApiMessage.value = '提交成功，正在判题...'
+    
+    // 开始轮询查询判题结果
+    const pollInterval = setInterval(async () => {
+      pollCount++
+      
+      try {
+        const resultRes = await http.get(`/api/v1/judge/result/${submissionId}`)
+        const resultData = resultRes.data
+        
+        if (resultData.code === 200 && resultData.data) {
+          // 判题完成
+          clearInterval(pollInterval)
+          judgeResult.value = convertBackendResult(resultData.data)
+          
+          // 根据结果设置提示信息
+          if (judgeResult.value.result === 0) {
+            submitApiMessage.value = `答案正确 (${judgeResult.value.passCount}/${judgeResult.value.totalCount})`
+          } else {
+            submitApiMessage.value = verdictText(judgeResult.value.result)
+          }
+          
+          judging.value = false
+        } else if (resultData.code === 200 && resultData.message === '判题中') {
+          // 还在判题中，继续等待
+          submitApiMessage.value = `提交成功，正在判题... (${pollCount}s)`
+        } else {
+          // 查询失败
+          clearInterval(pollInterval)
+          judgeErr.value = resultData.message || '查询结果失败'
+          judging.value = false
+        }
+      } catch (e) {
+        console.error('轮询查询失败:', e)
+        clearInterval(pollInterval)
+        judgeErr.value = '查询判题结果失败'
+        judging.value = false
+      }
+      
+      // 超时保护
+      if (pollCount >= maxPollCount) {
+        clearInterval(pollInterval)
+        judgeErr.value = '判题超时，请稍后查看提交记录'
+        judging.value = false
+      }
+    }, 2000) // 每2秒查询一次
+    
   } catch (e: unknown) {
     judgeErr.value = e instanceof Error ? e.message : '请求失败'
-  } finally {
     judging.value = false
   }
 }
@@ -488,17 +538,9 @@ function mapLanguageToBackend(lang: JudgeApiLanguage): string {
 
 /** 转换后端结果为前端格式 */
 function convertBackendResult(backendResult: any): JudgeSubmitResult {
-  const statusMap: Record<string, number> = {
-    'ACCEPTED': 0,
-    'COMPILE_ERROR': 1,
-    'RUNTIME_ERROR': 2,
-    'TIME_LIMIT_EXCEEDED': 3,
-    'MEMORY_LIMIT_EXCEEDED': 2,
-    'WRONG_ANSWER': 2,
-    'SYSTEM_ERROR': 2,
-  }
-
-  const result = statusMap[backendResult.status] ?? 2 // 默认归为运行错误
+  // 后端 /api/v1/judge/result 接口直接返回数字状态码（result 字段）
+  // 0=通过, 1=编译错误, 2=运行错误, 3=超时
+  const result = backendResult.result ?? 2 // 默认归为运行错误
 
   return {
     submissionId: backendResult.submissionId || 0,
@@ -634,7 +676,8 @@ function goSubmissionDetail() {
           </p>
           
           <!-- 错误信息（编译错误、运行时错误等） -->
-          <pre v-if="judgeResult.errorMsg" class="err-msg">{{ judgeResult.errorMsg }}</pre>
+          <!-- 根据判题结果动态切换样式：通过=绿色，失败=红色 -->
+          <pre v-if="judgeResult.errorMsg" class="err-msg" :class="{ 'success': judgeResult.result === 0 }">{{ judgeResult.errorMsg }}</pre>
           
           <div class="row-actions">
             <button v-if="judgeResult.submissionId > 0" type="button" class="btn-link" @click="goSubmissionDetail">
@@ -1034,6 +1077,13 @@ function goSubmissionDetail() {
   padding: 10px;
   border-radius: 6px;
   border-left: 3px solid var(--lc-red);
+}
+
+/* 通过时的绿色样式 */
+.err-msg.success {
+  color: var(--lc-green);
+  background: rgba(0, 184, 163, 0.05);
+  border-left-color: var(--lc-green);
 }
 
 .output-block {

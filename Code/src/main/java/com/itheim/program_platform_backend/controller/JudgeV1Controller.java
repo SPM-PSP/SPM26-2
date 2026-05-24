@@ -332,7 +332,20 @@ public class JudgeV1Controller {
 
             log.info("判题完成: submissionId={}, 通过数={}, 总数={}", submissionId, passCount, totalCount);
 
-            Integer statusCode = hasError ? convertStatusToCode(judgeResponse.getStatus()) : 0;
+            // 修复：优先判断是否全部通过，避免状态码和错误信息不一致
+            Integer statusCode;
+            if (passCount == totalCount && totalCount > 0) {
+                // 所有测试用例都通过
+                statusCode = 0;
+                log.info("✅ 所有测试用例通过: {}/{}", passCount, totalCount);
+            } else if (hasError && judgeResponse != null) {
+                // 部分通过或全部失败，使用最后一个失败用例的状态
+                statusCode = convertStatusToCode(judgeResponse.getStatus());
+                log.warn("❌ 部分测试用例失败: {}/{}, 最后状态: {}", passCount, totalCount, judgeResponse.getStatus());
+            } else {
+                // 默认通过（防止边缘情况）
+                statusCode = 0;
+            }
 
             // 更新提交记录
             Submission submission = new Submission();
