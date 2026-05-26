@@ -407,13 +407,17 @@ async function submitAndJudge() {
         const resultData = resultRes.data
         
         if (resultData.code === 200 && resultData.data) {
-          // 判题完成
+          // 判题完成（包括系统错误）
           clearInterval(pollInterval)
           judgeResult.value = convertBackendResult(resultData.data)
           
           // 根据结果设置提示信息
           if (judgeResult.value.result === 0) {
             submitApiMessage.value = `答案正确 (${judgeResult.value.passCount}/${judgeResult.value.totalCount})`
+          } else if (judgeResult.value.result === -2) {
+            // 系统错误
+            submitApiMessage.value = '系统错误'
+            judgeErr.value = judgeResult.value.errorMsg || '判题系统异常'
           } else {
             submitApiMessage.value = verdictText(judgeResult.value.result)
           }

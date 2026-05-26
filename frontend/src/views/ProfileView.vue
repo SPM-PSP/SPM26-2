@@ -169,6 +169,17 @@ function handleImageError(event: Event) {
   console.error('头像加载失败，URL:', img.src)
   avatarLoadError.value = true
 }
+
+function formatDateTime(dateTime: string | undefined): string {
+  if (!dateTime) return '未知'
+  try {
+    const date = new Date(dateTime)
+    if (isNaN(date.getTime())) return '未知'
+    return date.toLocaleString('zh-CN')
+  } catch {
+    return '未知'
+  }
+}
 </script>
 
 <template>
@@ -269,7 +280,7 @@ function handleImageError(event: Event) {
         <dd>{{ info.userId }}</dd>
         
         <dt>注册时间</dt>
-        <dd>{{ new Date(info.createTime).toLocaleString('zh-CN') }}</dd>
+        <dd>{{ formatDateTime(info.createTime) }}</dd>
       </dl>
       
       <!-- 消息提示 -->

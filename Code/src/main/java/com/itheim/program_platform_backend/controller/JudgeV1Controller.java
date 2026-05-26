@@ -388,14 +388,36 @@ public class JudgeV1Controller {
         } catch (Exception e) {
             log.error("异步判题失败: submissionId={}", submissionId, e);
             
+            // 提取简洁的错误信息（避免过长）
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.length() > 200) {
+                errorMessage = errorMessage.substring(0, 200) + "...";
+            }
+            
             // 更新为系统错误状态
             Submission submission = new Submission();
             submission.setId(submissionId);
             submission.setStatus(-2); // -2 表示系统错误
-            submission.setErrorMsg("判题系统异常: " + e.getMessage());
+            submission.setErrorMsg("判题系统异常: " + (errorMessage != null ? errorMessage : "未知错误"));
+            submission.setPassCount(0);
+            submission.setTotalCount(totalCount);
             submissionMapper.updateSubmission(submission);
             
+            // 构建错误响应并缓存，确保前端能正确获取错误信息
+            JudgeResponseVO errorVO = new JudgeResponseVO();
+            errorVO.setSubmissionId(submissionId);
+            errorVO.setRunTime(0);
+            errorVO.setMemory(0);
+            errorVO.setErrorMsg("判题系统异常: " + (errorMessage != null ? errorMessage : "未知错误"));
+            errorVO.setSubmitTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            errorVO.setResult(-2); // -2 表示系统错误
+            errorVO.setPassCount(0);
+            errorVO.setTotalCount(totalCount);
+            
+            resultCacheService.saveResult(submissionId, errorVO);
             resultCacheService.updateStatus(submissionId, "FAILED");
+            
+            log.error("已缓存错误结果: submissionId={}, result=-2", submissionId);
         }
     }
 

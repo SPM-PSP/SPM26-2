@@ -27,6 +27,8 @@ export function verdictText(result: number): string {
       return '运行错误'
     case 3:
       return '超时'
+    case -2:
+      return '系统错误'
     default:
       return '未知'
   }
@@ -34,6 +36,7 @@ export function verdictText(result: number): string {
 
 export function verdictClass(result: number): string {
   if (result === 0) return 'verdict-ac'
+  if (result === -2) return 'verdict-system-error' // 系统错误
   return 'verdict-wa'
 }
 

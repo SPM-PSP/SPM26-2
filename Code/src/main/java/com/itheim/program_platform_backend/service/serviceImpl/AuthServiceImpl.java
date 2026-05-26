@@ -157,6 +157,7 @@ public class AuthServiceImpl implements AuthService {
                 .avatar(user.getAvatar())
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .createTime(user.getCreateTime())
                 .build();
     }
 

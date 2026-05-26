@@ -112,6 +112,7 @@ export interface UserInfo {
   avatar: string
   email: string
   phone?: string
+  createTime: string
 }
 
 export interface ProblemGenerateResponse {
