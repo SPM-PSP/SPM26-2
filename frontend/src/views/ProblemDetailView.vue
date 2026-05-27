@@ -661,7 +661,7 @@ function goSubmissionDetail() {
         </div>
         <label>测试输入</label>
         <textarea v-model="customInput" class="io custom-io" placeholder="输入测试数据..." />
-        <label>期望输出（可选）</label>
+        <label>期望输出</label>
         <textarea v-model="customOutput" class="io custom-io" placeholder="输入期望的输出结果..." />
       </div>
 
