@@ -506,15 +506,10 @@ public class AdminServiceImpl implements AdminService {
         String relativePath = "problem-" + problemId + "/" + fileName;
         Path targetPath = resolveSafePath(relativePath);
         try {
-            log.info("开始保存测试用例文件: problemId={}, fileName={}, targetPath={}", problemId, fileName, targetPath);
             Files.createDirectories(targetPath.getParent());
-            log.info("目录创建成功: {}", targetPath.getParent());
             file.transferTo(targetPath.toFile());
-            log.info("文件保存成功: {}", targetPath);
         } catch (Exception e) {
-            log.error("文件保存失败: problemId={}, fileName={}, targetPath={}, 错误类型={}, 错误消息={}", 
-                    problemId, fileName, targetPath, e.getClass().getName(), e.getMessage(), e);
-            throw new BusinessException(500, "文件保存失败: " + e.getMessage());
+            throw new BusinessException(500, "文件保存失败");
         }
         return relativePath;
     }
