@@ -25,6 +25,12 @@ spring:
     pathmatch:
       matching-strategy: ant_path_matcher
 
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 50MB        # 单个文件最大大小
+      max-request-size: 100MB    # 整个请求最大大小
+
 
 # MyBatis 配置
 mybatis:
@@ -107,5 +113,5 @@ judge:
 
 # 文件存储配置
 file-storage:
-  test-case-root: src/main/resources/testcases/
+  test-case-root: C:/Users/27584/Desktop/SPM26-2/SPM26-2/src/main/resources/testcases/
 
